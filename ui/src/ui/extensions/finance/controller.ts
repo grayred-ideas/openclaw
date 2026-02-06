@@ -86,12 +86,28 @@ export interface Email {
   attachments?: Array<{ filename: string; mimeType: string }>;
 }
 
+// Vendor/Supplier Data Model
+export interface Vendor {
+  id: string;
+  name: string; // cleaned vendor name
+  aliases: string[]; // alternative names found in statements (e.g., "ADBE INC" for "Adobe")
+  category: string; // software, hosting, marketing, office, travel, legal, food, telecom, etc.
+  department?: string; // engineering, marketing, sales, operations, admin
+  website?: string;
+  totalSpent: number; // calculated
+  transactionCount: number; // calculated
+  lastTransaction?: string; // date
+  company: string; // aexy or carxo
+  notes?: string;
+}
+
 export interface FinanceData {
   companies: string[];
   invoices: Invoice[];
   statements: Statement[];
   statementLines: StatementLine[];
   categories: string[];
+  vendors: Vendor[];
 }
 
 export type CompanyFilter = "all" | "aexy" | "carxo";
@@ -116,7 +132,19 @@ export async function loadFinanceData(gateway: GatewayBrowserClient): Promise<Fi
     });
     const res = result as { file?: { content?: string; missing?: boolean } } | null;
     if (res?.file && !res.file.missing && res.file.content) {
-      return JSON.parse(res.file.content);
+      const data = JSON.parse(res.file.content) as FinanceData;
+
+      // Ensure vendors array exists and is populated
+      if (!data.vendors) {
+        data.vendors = [];
+      }
+
+      // Auto-extract/update vendors if array is empty or data has changed
+      if (data.vendors.length === 0) {
+        data.vendors = extractVendors(data);
+      }
+
+      return data;
     }
   } catch (e) {
     console.warn("Finance data not found, using defaults:", e);
@@ -142,7 +170,7 @@ export async function saveFinanceData(
  * Get default/mock data for development
  */
 function getDefaultData(): FinanceData {
-  return {
+  const data = {
     companies: ["aexy", "carxo"],
     invoices: [
       {
@@ -338,9 +366,15 @@ function getDefaultData(): FinanceData {
       "travel",
       "office",
       "legal",
+      "uncategorized",
       "other",
     ],
+    vendors: [],
   };
+
+  // Auto-extract vendors on first load
+  data.vendors = extractVendors(data);
+  return data;
 }
 
 /**
@@ -1291,6 +1325,305 @@ export async function getInboxEmails(_gateway: GatewayBrowserClient): Promise<Em
       attachments: [{ filename: "stripe-receipt.pdf", mimeType: "application/pdf" }],
     },
   ];
+}
+
+// Duplicate function removed - normalizeVendorName is already defined above
+
+/**
+ * Auto-categorize vendors based on known patterns
+ */
+function categorizeVendor(vendorName: string): string {
+  const name = vendorName.toLowerCase();
+
+  // Hosting providers
+  if (
+    /digitalocean|aws|amazon web services|hetzner|vercel|netlify|cloudflare|linode|vultr/.test(name)
+  ) {
+    return "hosting";
+  }
+
+  // Software/Tools
+  if (
+    /github|jetbrains|figma|adobe|openai|stripe|microsoft|google workspace|slack|zoom|notion|linear|docker|mailchimp|sendgrid/.test(
+      name,
+    )
+  ) {
+    return "software";
+  }
+
+  // Marketing
+  if (/google ads|facebook|linkedin|twitter|meta|instagram|tiktok|snapchat/.test(name)) {
+    return "marketing";
+  }
+
+  // Transport/Food
+  if (/bolt|wolt|circle k|neste|shell|maxima|rimi/.test(name)) {
+    return "transport";
+  }
+
+  // Telecom
+  if (/telia|lmt|bite|tet|elisa/.test(name)) {
+    return "telecom";
+  }
+
+  // Utilities
+  if (/latvenergo|rigas siltums|rigas udens/.test(name)) {
+    return "utilities";
+  }
+
+  // Legal/Professional
+  if (/lawyer|legal|accounting|audit|tax|notary/.test(name)) {
+    return "legal";
+  }
+
+  // Office/Supplies
+  if (/staples|office|supplies|furniture|equipment/.test(name)) {
+    return "office";
+  }
+
+  return "other";
+}
+
+/**
+ * Determine department based on category and vendor name
+ */
+function determineDepartment(vendor: string, category: string): string | undefined {
+  const name = vendor.toLowerCase();
+
+  if (category === "hosting" || category === "software") {
+    if (/github|jetbrains|docker|linear|notion/.test(name)) return "engineering";
+    if (/figma|adobe|canva/.test(name)) return "marketing";
+    return "engineering"; // Default for tech tools
+  }
+
+  if (category === "marketing") return "marketing";
+
+  if (/crm|sales|hubspot|salesforce/.test(name)) return "sales";
+
+  if (
+    category === "legal" ||
+    category === "office" ||
+    category === "telecom" ||
+    category === "utilities"
+  ) {
+    return "operations";
+  }
+
+  return undefined; // Let user assign manually
+}
+
+/**
+ * Extract and consolidate vendors from all invoices and statement lines
+ */
+export function extractVendors(data: FinanceData): Vendor[] {
+  const vendorMap = new Map<
+    string,
+    {
+      names: Set<string>;
+      transactions: Array<{ amount: number; date: string; company: string }>;
+      category: string;
+      department?: string;
+    }
+  >();
+
+  // Process invoices
+  for (const invoice of data.invoices) {
+    const normalized = normalizeVendorName(invoice.vendor);
+    if (!normalized) continue;
+
+    if (!vendorMap.has(normalized)) {
+      vendorMap.set(normalized, {
+        names: new Set([invoice.vendor]),
+        transactions: [],
+        category: categorizeVendor(invoice.vendor),
+        department: determineDepartment(invoice.vendor, categorizeVendor(invoice.vendor)),
+      });
+    } else {
+      vendorMap.get(normalized)!.names.add(invoice.vendor);
+    }
+
+    vendorMap.get(normalized)!.transactions.push({
+      amount: invoice.amount,
+      date: invoice.date,
+      company: invoice.company,
+    });
+  }
+
+  // Process statement lines (extract vendor names from descriptions)
+  for (const line of data.statementLines) {
+    if (line.amount >= 0) continue; // Skip income
+
+    // Extract likely vendor name from description
+    let vendorName = line.description
+      .replace(/^(card payment|transfer|direct debit|payment)/i, "") // Remove payment type prefixes
+      .replace(/\d{2}\/\d{2}\/\d{4}/g, "") // Remove dates
+      .replace(/\d+\.\d{2}/g, "") // Remove amounts
+      .replace(/[^a-zA-Z0-9\s]/g, " ") // Replace special chars with spaces
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (vendorName.length < 3) continue; // Skip if too short
+
+    const normalized = normalizeVendorName(vendorName);
+    if (!normalized) continue;
+
+    // Get the statement to determine company
+    const statement = data.statements.find((s) => s.id === line.statementId);
+    const company = statement?.company || "aexy";
+
+    if (!vendorMap.has(normalized)) {
+      vendorMap.set(normalized, {
+        names: new Set([vendorName]),
+        transactions: [],
+        category: categorizeVendor(vendorName),
+        department: determineDepartment(vendorName, categorizeVendor(vendorName)),
+      });
+    } else {
+      vendorMap.get(normalized)!.names.add(vendorName);
+    }
+
+    vendorMap.get(normalized)!.transactions.push({
+      amount: Math.abs(line.amount),
+      date: line.date,
+      company: company,
+    });
+  }
+
+  // Convert to Vendor objects
+  const vendors: Vendor[] = [];
+  let idCounter = 1;
+
+  for (const [normalized, data] of vendorMap) {
+    const names = Array.from(data.names).sort();
+    const cleanName = names[0]; // Use the first (alphabetically) name as primary
+    const aliases = names.slice(1);
+
+    // Calculate totals
+    const totalSpent = data.transactions.reduce((sum, t) => sum + t.amount, 0);
+    const transactionCount = data.transactions.length;
+    const lastTransaction = data.transactions
+      .map((t) => t.date)
+      .sort()
+      .reverse()[0];
+
+    // Determine primary company (most transactions)
+    const companyCounts = data.transactions.reduce(
+      (acc, t) => {
+        acc[t.company] = (acc[t.company] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    const primaryCompany =
+      Object.entries(companyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "aexy";
+
+    vendors.push({
+      id: `vendor-${idCounter++}`,
+      name: cleanName,
+      aliases,
+      category: data.category,
+      department: data.department,
+      totalSpent,
+      transactionCount,
+      lastTransaction,
+      company: primaryCompany,
+    });
+  }
+
+  // Sort by total spent (descending)
+  return vendors.sort((a, b) => b.totalSpent - a.totalSpent);
+}
+
+/**
+ * Update vendors array, preserving manual edits
+ */
+export function updateVendors(data: FinanceData): FinanceData {
+  const newData = JSON.parse(JSON.stringify(data)) as FinanceData;
+  const extractedVendors = extractVendors(data);
+  const existingVendors = new Map(data.vendors.map((v) => [v.name.toLowerCase(), v]));
+
+  // Merge extracted with existing, preserving manual edits
+  const updatedVendors: Vendor[] = [];
+
+  for (const extracted of extractedVendors) {
+    const existing = existingVendors.get(extracted.name.toLowerCase());
+    if (existing) {
+      // Update calculated fields but preserve manual edits
+      updatedVendors.push({
+        ...existing,
+        totalSpent: extracted.totalSpent,
+        transactionCount: extracted.transactionCount,
+        lastTransaction: extracted.lastTransaction,
+        // Only update category/department if they weren't manually set
+        category: existing.category === "other" ? extracted.category : existing.category,
+        department: existing.department || extracted.department,
+      });
+    } else {
+      updatedVendors.push(extracted);
+    }
+  }
+
+  newData.vendors = updatedVendors;
+  return newData;
+}
+
+/**
+ * Get vendors filtered by company
+ */
+export function getVendors(data: FinanceData, companyFilter: CompanyFilter = "all"): Vendor[] {
+  if (companyFilter === "all") return data.vendors;
+  return data.vendors.filter((vendor) => vendor.company === companyFilter);
+}
+
+/**
+ * Update vendor information
+ */
+export function updateVendor(
+  data: FinanceData,
+  vendorId: string,
+  updates: Partial<Vendor>,
+): FinanceData {
+  const newData = JSON.parse(JSON.stringify(data)) as FinanceData;
+  const vendorIndex = newData.vendors.findIndex((v) => v.id === vendorId);
+  if (vendorIndex >= 0) {
+    newData.vendors[vendorIndex] = { ...newData.vendors[vendorIndex], ...updates };
+  }
+  return newData;
+}
+
+/**
+ * Get spending by department
+ */
+export function getSpendingByDepartment(
+  data: FinanceData,
+  companyFilter: CompanyFilter = "all",
+): Record<string, number> {
+  const vendors = getVendors(data, companyFilter);
+  const spending: Record<string, number> = {};
+
+  for (const vendor of vendors) {
+    const department = vendor.department || "unassigned";
+    spending[department] = (spending[department] || 0) + vendor.totalSpent;
+  }
+
+  return spending;
+}
+
+/**
+ * Get vendor spending by category
+ */
+export function getVendorSpendingByCategory(
+  data: FinanceData,
+  companyFilter: CompanyFilter = "all",
+): Record<string, number> {
+  const vendors = getVendors(data, companyFilter);
+  const spending: Record<string, number> = {};
+
+  for (const vendor of vendors) {
+    spending[vendor.category] = (spending[vendor.category] || 0) + vendor.totalSpent;
+  }
+
+  return spending;
 }
 
 /**
