@@ -7,7 +7,7 @@
  *
  * Usage in any Lit component:
  *   import { ocTheme, ocBaseFormStyles, ocCardStyles, ... } from '../shared/theme.js';
- *   static styles = [ocTheme, ocBaseFormStyles, css`/* component-specific */`];
+ *   static styles = [ocTheme, ocBaseFormStyles, css\`your component styles\`];
  */
 
 import { css } from "lit";
@@ -25,24 +25,24 @@ export const ocTheme = css`
     --card-foreground: hsl(224 71.4% 4.1%);
     --popover: hsl(0 0% 100%);
     --popover-foreground: hsl(224 71.4% 4.1%);
-    
+
     --primary: hsl(221.2 83.2% 53.3%);
     --primary-foreground: hsl(210 40% 98%);
     --secondary: hsl(210 40% 96%);
     --secondary-foreground: hsl(222.2 84% 4.9%);
-    
+
     --muted: hsl(210 40% 96%);
     --muted-foreground: hsl(215.4 16.3% 46.9%);
     --accent: hsl(210 40% 96%);
     --accent-foreground: hsl(222.2 84% 4.9%);
-    
+
     --destructive: hsl(0 84.2% 60.2%);
     --destructive-foreground: hsl(210 40% 98%);
-    
+
     --border: hsl(214.3 31.8% 91.4%);
     --input: hsl(214.3 31.8% 91.4%);
     --ring: hsl(221.2 83.2% 53.3%);
-    
+
     /* ── Radius System ── */
     --radius: 0.5rem;
     --radius-sm: 0.375rem;
@@ -94,8 +94,9 @@ export const ocTheme = css`
     --oc-space-4xl: 3rem;
 
     /* ── Typography (Inter-first system stack) ── */
-    --oc-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      "Helvetica Neue", Arial, sans-serif;
+    --oc-font-sans:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      sans-serif;
     --oc-font-mono: ui-monospace, "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
 
     --oc-text-xs: 0.75rem;
@@ -186,7 +187,7 @@ export const ocBaseFormStyles = css`
 
   /* ── Native Input Styling ── */
   input[type="text"],
-  input[type="email"], 
+  input[type="email"],
   input[type="password"],
   input[type="number"],
   input[type="search"],
@@ -916,13 +917,23 @@ export const ocModalStyles = css`
   }
 
   @keyframes oc-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes oc-slide-up {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
@@ -1042,8 +1053,14 @@ export const ocToastStyles = css`
   }
 
   @keyframes oc-toast-in {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
@@ -1051,43 +1068,109 @@ export const ocToastStyles = css`
 
 export const ocUtilities = css`
   /* Flexbox */
-  .oc-flex { display: flex; }
-  .oc-flex-col { display: flex; flex-direction: column; }
-  .oc-items-center { align-items: center; }
-  .oc-justify-between { justify-content: space-between; }
-  .oc-justify-center { justify-content: center; }
-  .oc-gap-xs { gap: var(--oc-space-xs); }
-  .oc-gap-sm { gap: var(--oc-space-sm); }
-  .oc-gap-md { gap: var(--oc-space-md); }
-  .oc-gap-lg { gap: var(--oc-space-lg); }
-  .oc-gap-xl { gap: var(--oc-space-xl); }
-  .oc-flex-1 { flex: 1; min-width: 0; }
-  .oc-flex-wrap { flex-wrap: wrap; }
-  .oc-flex-shrink-0 { flex-shrink: 0; }
+  .oc-flex {
+    display: flex;
+  }
+  .oc-flex-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .oc-items-center {
+    align-items: center;
+  }
+  .oc-justify-between {
+    justify-content: space-between;
+  }
+  .oc-justify-center {
+    justify-content: center;
+  }
+  .oc-gap-xs {
+    gap: var(--oc-space-xs);
+  }
+  .oc-gap-sm {
+    gap: var(--oc-space-sm);
+  }
+  .oc-gap-md {
+    gap: var(--oc-space-md);
+  }
+  .oc-gap-lg {
+    gap: var(--oc-space-lg);
+  }
+  .oc-gap-xl {
+    gap: var(--oc-space-xl);
+  }
+  .oc-flex-1 {
+    flex: 1;
+    min-width: 0;
+  }
+  .oc-flex-wrap {
+    flex-wrap: wrap;
+  }
+  .oc-flex-shrink-0 {
+    flex-shrink: 0;
+  }
 
   /* Spacing */
-  .oc-mb-sm { margin-bottom: var(--oc-space-sm); }
-  .oc-mb-md { margin-bottom: var(--oc-space-md); }
-  .oc-mb-lg { margin-bottom: var(--oc-space-lg); }
-  .oc-mb-xl { margin-bottom: var(--oc-space-xl); }
-  .oc-mt-lg { margin-top: var(--oc-space-lg); }
+  .oc-mb-sm {
+    margin-bottom: var(--oc-space-sm);
+  }
+  .oc-mb-md {
+    margin-bottom: var(--oc-space-md);
+  }
+  .oc-mb-lg {
+    margin-bottom: var(--oc-space-lg);
+  }
+  .oc-mb-xl {
+    margin-bottom: var(--oc-space-xl);
+  }
+  .oc-mt-lg {
+    margin-top: var(--oc-space-lg);
+  }
 
   /* Text */
-  .oc-text-muted { color: var(--muted, var(--oc-gray-500)); }
-  .oc-text-strong { color: var(--text-strong, var(--oc-gray-900)); }
-  .oc-text-accent { color: var(--oc-red); }
-  .oc-text-sm { font-size: var(--oc-text-sm); }
-  .oc-text-xs { font-size: var(--oc-text-xs); }
-  .oc-font-mono { font-family: var(--oc-font-mono); }
-  .oc-font-semibold { font-weight: var(--oc-weight-semibold); }
-  .oc-font-bold { font-weight: var(--oc-weight-bold); }
-  .oc-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .oc-text-center { text-align: center; }
-  .oc-break-word { word-break: break-word; }
+  .oc-text-muted {
+    color: var(--muted, var(--oc-gray-500));
+  }
+  .oc-text-strong {
+    color: var(--text-strong, var(--oc-gray-900));
+  }
+  .oc-text-accent {
+    color: var(--oc-red);
+  }
+  .oc-text-sm {
+    font-size: var(--oc-text-sm);
+  }
+  .oc-text-xs {
+    font-size: var(--oc-text-xs);
+  }
+  .oc-font-mono {
+    font-family: var(--oc-font-mono);
+  }
+  .oc-font-semibold {
+    font-weight: var(--oc-weight-semibold);
+  }
+  .oc-font-bold {
+    font-weight: var(--oc-weight-bold);
+  }
+  .oc-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .oc-text-center {
+    text-align: center;
+  }
+  .oc-break-word {
+    word-break: break-word;
+  }
 
   /* Layout */
-  .oc-w-full { width: 100%; }
-  .oc-min-w-0 { min-width: 0; }
+  .oc-w-full {
+    width: 100%;
+  }
+  .oc-min-w-0 {
+    min-width: 0;
+  }
 
   /* Spinner */
   .oc-spinner {
@@ -1099,11 +1182,20 @@ export const ocUtilities = css`
     animation: oc-spin 0.8s linear infinite;
   }
 
-  .oc-spinner--sm { width: 14px; height: 14px; }
-  .oc-spinner--lg { width: 32px; height: 32px; border-width: 3px; }
+  .oc-spinner--sm {
+    width: 14px;
+    height: 14px;
+  }
+  .oc-spinner--lg {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
 
   @keyframes oc-spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Divider */

@@ -7,6 +7,7 @@ import type { SessionsListResult } from "./types.ts";
 import { refreshChat } from "./app-chat.ts";
 import { syncUrlWithSessionKey } from "./app-settings.ts";
 import { OpenClawApp } from "./app.ts";
+import { renderSessionTabs } from "./components/session-tabs.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
 import { icons } from "./icons.ts";
 import { iconForTab, pathForTab, titleForTab, type Tab } from "./navigation.ts";
@@ -40,12 +41,6 @@ export function renderTab(state: AppViewState, tab: Tab) {
 }
 
 export function renderChatControls(state: AppViewState) {
-  const mainSessionKey = resolveMainSessionKey(state.hello, state.sessionsResult);
-  const sessionOptions = resolveSessionOptions(
-    state.sessionKey,
-    state.sessionsResult,
-    mainSessionKey,
-  );
   const disableThinkingToggle = state.onboarding;
   const disableFocusToggle = state.onboarding;
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
@@ -86,39 +81,6 @@ export function renderChatControls(state: AppViewState) {
   `;
   return html`
     <div class="chat-controls">
-      <label class="field chat-controls__session">
-        <select
-          .value=${state.sessionKey}
-          ?disabled=${!state.connected}
-          @change=${(e: Event) => {
-            const next = (e.target as HTMLSelectElement).value;
-            state.sessionKey = next;
-            state.chatMessage = "";
-            state.chatStream = null;
-            (state as unknown as OpenClawApp).chatStreamStartedAt = null;
-            state.chatRunId = null;
-            (state as unknown as OpenClawApp).resetToolStream();
-            (state as unknown as OpenClawApp).resetChatScroll();
-            state.applySettings({
-              ...state.settings,
-              sessionKey: next,
-              lastActiveSessionKey: next,
-            });
-            void state.loadAssistantIdentity();
-            syncUrlWithSessionKey(next, true);
-            void loadChatHistory(state as unknown as ChatState);
-          }}
-        >
-          ${repeat(
-            sessionOptions,
-            (entry) => entry.key,
-            (entry) =>
-              html`<option value=${entry.key}>
-                ${entry.displayName ?? entry.key}
-              </option>`,
-          )}
-        </select>
-      </label>
       <button
         class="btn btn--sm btn--icon"
         ?disabled=${state.chatLoading || !state.connected}
@@ -129,6 +91,19 @@ export function renderChatControls(state: AppViewState) {
         title="Refresh chat data"
       >
         ${refreshIcon}
+      </button>
+      <button
+        class="btn btn--sm btn--icon"
+        ?disabled=${!state.connected}
+        @click=${() => {
+          // Clear chat functionality
+          if (confirm("Clear all messages from this chat?")) {
+            (state as unknown as OpenClawApp).clearChat();
+          }
+        }}
+        title="Clear chat"
+      >
+        ${icons.trash}
       </button>
       <span class="chat-controls__separator">|</span>
       <button
@@ -175,6 +150,60 @@ export function renderChatControls(state: AppViewState) {
       </button>
     </div>
   `;
+}
+
+export function renderSessionTabsForChat(state: AppViewState) {
+  const mainSessionKey = resolveMainSessionKey(state.hello, state.sessionsResult);
+
+  return renderSessionTabs({
+    sessions: state.sessionsResult,
+    activeSessionKey: state.sessionKey,
+    mainSessionKey,
+    connected: state.connected,
+    onSessionChange: (sessionKey: string) => {
+      state.sessionKey = sessionKey;
+      state.chatMessage = "";
+      state.chatStream = null;
+      (state as unknown as OpenClawApp).chatStreamStartedAt = null;
+      state.chatRunId = null;
+      (state as unknown as OpenClawApp).resetToolStream();
+      (state as unknown as OpenClawApp).resetChatScroll();
+      state.applySettings({
+        ...state.settings,
+        sessionKey,
+        lastActiveSessionKey: sessionKey,
+      });
+      void state.loadAssistantIdentity();
+      syncUrlWithSessionKey(sessionKey, true);
+      void loadChatHistory(state as unknown as ChatState);
+    },
+    onNewSession: () => {
+      (state as unknown as OpenClawApp).handleSendChat("/new", { restoreDraft: true });
+    },
+    onCloseSession: (sessionKey: string) => {
+      if (confirm(`Close session "${sessionKey}"?`)) {
+        // For now, just switch to main session if closing current session
+        if (sessionKey === state.sessionKey) {
+          const mainKey = mainSessionKey || "main";
+          state.sessionKey = mainKey;
+          state.chatMessage = "";
+          state.chatStream = null;
+          (state as unknown as OpenClawApp).chatStreamStartedAt = null;
+          state.chatRunId = null;
+          (state as unknown as OpenClawApp).resetToolStream();
+          (state as unknown as OpenClawApp).resetChatScroll();
+          state.applySettings({
+            ...state.settings,
+            sessionKey: mainKey,
+            lastActiveSessionKey: mainKey,
+          });
+          void state.loadAssistantIdentity();
+          syncUrlWithSessionKey(mainKey, true);
+          void loadChatHistory(state as unknown as ChatState);
+        }
+      }
+    },
+  });
 }
 
 type SessionDefaultsSnapshot = {

@@ -56,6 +56,9 @@ export type ChatProps = {
   // Scroll control
   showNewMessages?: boolean;
   onScrollToBottom?: () => void;
+  // Message deletion
+  onDeleteMessage?: (messageKey: string) => void;
+  onClearChat?: () => void;
   // Event handlers
   onRefresh: () => void;
   onToggleFocusMode: () => void;
@@ -240,6 +243,7 @@ export function renderChat(props: ChatProps) {
           if (item.kind === "group") {
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
+              onDeleteMessage: props.onDeleteMessage,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,

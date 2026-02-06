@@ -2,7 +2,12 @@ import { html, nothing } from "lit";
 import type { AppViewState } from "./app-view-state.ts";
 import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import { ChatHost, refreshChatAvatar } from "./app-chat.ts";
-import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers.ts";
+import {
+  renderChatControls,
+  renderTab,
+  renderThemeToggle,
+  renderSessionTabsForChat,
+} from "./app-render.helpers.ts";
 import { OpenClawApp } from "./app.ts";
 import { loadAgentFileContent, loadAgentFiles, saveAgentFile } from "./controllers/agent-files.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
@@ -224,6 +229,8 @@ export function renderApp(state: AppViewState) {
             ${isChat ? renderChatControls(state) : nothing}
           </div>
         </section>
+        
+        ${isChat ? renderSessionTabsForChat(state) : nothing}
 
         ${
           state.tab === "overview"
@@ -981,6 +988,10 @@ export function renderApp(state: AppViewState) {
                   (state as unknown as OpenClawApp).handleSendChat("/new", { restoreDraft: true }),
                 showNewMessages: state.chatNewMessagesBelow,
                 onScrollToBottom: () => state.scrollToBottom(),
+                // Message deletion
+                onDeleteMessage: (messageKey: string) =>
+                  (state as unknown as OpenClawApp).deleteMessage(messageKey),
+                onClearChat: () => (state as unknown as OpenClawApp).clearChat(),
                 // Sidebar props for tool output viewing
                 sidebarOpen: (state as unknown as OpenClawApp).sidebarOpen,
                 sidebarContent: (state as unknown as OpenClawApp).sidebarContent,

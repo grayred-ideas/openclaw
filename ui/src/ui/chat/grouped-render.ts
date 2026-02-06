@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { AssistantIdentity } from "../assistant-identity.ts";
 import type { MessageGroup } from "../types/chat-types.ts";
+import { icons } from "../icons.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
 import {
@@ -107,6 +108,7 @@ export function renderMessageGroup(
   group: MessageGroup,
   opts: {
     onOpenSidebar?: (content: string) => void;
+    onDeleteMessage?: (messageKey: string) => void;
     showReasoning: boolean;
     assistantName?: string;
     assistantAvatar?: string | null;
@@ -140,6 +142,8 @@ export function renderMessageGroup(
             {
               isStreaming: group.isStreaming && index === group.messages.length - 1,
               showReasoning: opts.showReasoning,
+              messageKey: item.key,
+              onDeleteMessage: opts.onDeleteMessage,
             },
             opts.onOpenSidebar,
           ),
@@ -217,7 +221,12 @@ function renderMessageImages(images: ImageBlock[]) {
 
 function renderGroupedMessage(
   message: unknown,
-  opts: { isStreaming: boolean; showReasoning: boolean },
+  opts: {
+    isStreaming: boolean;
+    showReasoning: boolean;
+    messageKey?: string;
+    onDeleteMessage?: (messageKey: string) => void;
+  },
   onOpenSidebar?: (content: string) => void,
 ) {
   const m = message as Record<string, unknown>;
@@ -246,6 +255,7 @@ function renderGroupedMessage(
     "chat-bubble",
     canCopyMarkdown ? "has-copy" : "",
     opts.isStreaming ? "streaming" : "",
+    opts.onDeleteMessage && opts.messageKey ? "has-delete" : "",
     "fade-in",
   ]
     .filter(Boolean)
@@ -262,6 +272,21 @@ function renderGroupedMessage(
   return html`
     <div class="${bubbleClasses}">
       ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown!) : nothing}
+      ${
+        opts.onDeleteMessage && opts.messageKey
+          ? html`
+              <button
+                class="chat-delete-button"
+                type="button"
+                aria-label="Delete message"
+                title="Delete message"
+                @click=${() => opts.onDeleteMessage!(opts.messageKey!)}
+              >
+                ${icons.x}
+              </button>
+            `
+          : nothing
+      }
       ${renderMessageImages(images)}
       ${
         reasoningMarkdown
