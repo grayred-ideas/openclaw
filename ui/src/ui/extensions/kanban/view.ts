@@ -127,6 +127,34 @@ export class KanbanView extends LitElement {
         color: var(--foreground);
       }
 
+      .filter-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 6px 28px 6px 10px;
+        color: var(--text);
+        font-size: var(--oc-text-sm);
+        font-family: inherit;
+        height: 34px;
+        cursor: pointer;
+        outline: none;
+        transition: border-color var(--duration-fast) var(--ease-out);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 14px;
+      }
+
+      .filter-select:hover {
+        border-color: var(--border-strong);
+      }
+
+      .filter-select:focus {
+        border-color: var(--accent);
+      }
+
       .active-filters {
         display: flex;
         align-items: center;
@@ -210,7 +238,7 @@ export class KanbanView extends LitElement {
         flex: 1;
         min-width: 260px;
         max-width: 320px;
-        background: var(--panel);
+        background: var(--bg-muted);
         border-radius: var(--radius-lg);
         display: flex;
         flex-direction: column;
@@ -233,7 +261,7 @@ export class KanbanView extends LitElement {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: var(--text-strong);
+        color: var(--text);
       }
 
       .column-dot {
@@ -243,12 +271,12 @@ export class KanbanView extends LitElement {
       }
 
       .column-count {
-        background: var(--bg-muted);
+        background: var(--bg-hover);
         padding: 2px 8px;
         border-radius: var(--radius-full);
         font-size: 12px;
         font-weight: 500;
-        color: var(--muted);
+        color: var(--text);
       }
 
       .column-body {
@@ -491,7 +519,7 @@ export class KanbanView extends LitElement {
         align-items: center;
         gap: 4px;
         font-size: 11px;
-        color: var(--muted);
+        color: var(--text);
       }
 
       .project-dot {
@@ -639,13 +667,31 @@ export class KanbanView extends LitElement {
         color: var(--text);
       }
 
+      .priority-badge.high {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444;
+      }
+
+      .priority-badge.medium {
+        background: #f59e0b;
+        color: #78350f;
+        border-color: #f59e0b;
+      }
+
+      .priority-badge.low {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+      }
+
       .add-task-btn {
         width: 100%;
         padding: 10px;
         background: transparent;
         border: 2px dashed var(--border);
         border-radius: var(--radius-md);
-        color: var(--muted);
+        color: var(--text);
         cursor: pointer;
         font-size: 13px;
         transition: all var(--duration-fast) var(--ease-out);
@@ -1328,8 +1374,7 @@ export class KanbanView extends LitElement {
         this.cyclePriority(task);
       }}>—</button>`;
     }
-    const color = PRIORITY_COLORS[p];
-    return html`<button class="priority-badge" style="background: ${color}20; color: ${color}; border-color: ${color}40;" title="Priority: ${p} (click to change)" @click=${(
+    return html`<button class="priority-badge ${p}" title="Priority: ${p} (click to change)" @click=${(
       e: Event,
     ) => {
       e.stopPropagation();

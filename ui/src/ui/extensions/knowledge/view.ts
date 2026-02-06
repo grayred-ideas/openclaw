@@ -59,6 +59,13 @@ export class KnowledgeView extends LitElement {
       flex-direction: column;
     }
 
+    /* Main content container - centered and compact */
+    .main-container {
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
     .header {
       display: flex;
       align-items: center;
@@ -122,8 +129,9 @@ export class KnowledgeView extends LitElement {
       border-radius: var(--radius-md);
       padding: 8px 12px;
       color: var(--text);
-      font-size: 13px;
-      width: 200px;
+      font-size: 14px;
+      width: 250px;
+      max-width: 300px;
       outline: none;
     }
     .search-input:focus {
@@ -142,9 +150,9 @@ export class KnowledgeView extends LitElement {
 
     .tab {
       padding: 8px 16px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      color: var(--muted);
+      color: var(--text);
       cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: all 0.15s;
@@ -155,30 +163,36 @@ export class KnowledgeView extends LitElement {
       display: flex;
       align-items: center;
       gap: 6px;
+      opacity: 0.7;
     }
     .tab:hover {
       color: var(--text);
       background: var(--bg-hover);
+      opacity: 1;
     }
     .tab.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
       background: var(--accent-subtle);
+      opacity: 1;
     }
 
     .tab-badge {
-      background: var(--bg-muted);
-      padding: 1px 6px;
+      background: var(--border);
+      padding: 2px 8px;
       border-radius: var(--radius-full);
       font-size: 11px;
       margin-left: 6px;
-      color: var(--muted);
+      color: var(--text);
+      font-weight: 500;
+      min-width: 18px;
+      text-align: center;
     }
 
     .content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 20px 20px;
+      padding: 24px 20px;
     }
 
     .btn {
@@ -225,8 +239,9 @@ export class KnowledgeView extends LitElement {
     .btn-primary {
       background: var(--accent);
       border-color: var(--accent);
-      color: var(--primary-foreground);
+      color: white;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      font-weight: 600;
     }
     .btn-primary:hover {
       background: var(--accent-hover);
@@ -241,12 +256,14 @@ export class KnowledgeView extends LitElement {
       font-size: 12px;
     }
     .btn-danger {
-      border-color: transparent;
+      border-color: var(--border);
       background: var(--danger-subtle);
       color: var(--danger);
     }
     .btn-danger:hover {
-      background: rgba(239, 68, 68, 0.15);
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
       transform: translateY(-1px);
     }
 
@@ -254,7 +271,7 @@ export class KnowledgeView extends LitElement {
     .card-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
     }
 
     .card {
@@ -264,11 +281,13 @@ export class KnowledgeView extends LitElement {
       padding: 16px;
       transition:
         border-color var(--duration-fast) var(--ease-out),
-        box-shadow var(--duration-fast) var(--ease-out);
+        box-shadow var(--duration-fast) var(--ease-out),
+        background var(--duration-fast) var(--ease-out);
     }
     .card:hover {
       border-color: var(--border-strong);
       box-shadow: var(--shadow-sm);
+      background: var(--bg-hover);
     }
 
     .card-header {
@@ -280,7 +299,7 @@ export class KnowledgeView extends LitElement {
 
     .card-title {
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--text-strong);
       word-break: break-word;
     }
@@ -288,16 +307,16 @@ export class KnowledgeView extends LitElement {
     .card-meta {
       font-size: 12px;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: 6px;
       display: flex;
       gap: 8px;
       align-items: center;
     }
 
     .card-content {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text);
-      margin-top: 8px;
+      margin-top: 12px;
       white-space: pre-wrap;
       word-break: break-word;
       line-height: 1.5;
@@ -360,7 +379,7 @@ export class KnowledgeView extends LitElement {
     .quick-add {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
     }
 
     .quick-add-input {
@@ -372,6 +391,7 @@ export class KnowledgeView extends LitElement {
       color: var(--text);
       font-size: 14px;
       outline: none;
+      max-width: 600px;
     }
     .quick-add-input:focus {
       border-color: var(--accent);
@@ -495,7 +515,7 @@ export class KnowledgeView extends LitElement {
     .filter-bar {
       display: flex;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
       align-items: center;
     }
@@ -546,17 +566,25 @@ export class KnowledgeView extends LitElement {
     }
 
     @media (max-width: 600px) {
+      .main-container {
+        max-width: 100%;
+        padding: 0 12px;
+      }
       .header {
-        padding: 12px 12px 0;
+        padding: 12px 0 0;
       }
       .tabs {
-        padding: 12px 12px 0;
+        padding: 12px 0 0;
       }
       .content {
-        padding: 12px;
+        padding: 12px 0;
       }
       .search-input {
         width: 140px;
+        max-width: 200px;
+      }
+      .quick-add-input {
+        max-width: none;
       }
     }
   `;
@@ -935,46 +963,48 @@ export class KnowledgeView extends LitElement {
     const refsCount = this.data ? this.data.references.length : 0;
 
     return html`
-      <div class="header">
-        <div class="title"><span class="icon icon-lg">${icons.book}</span> Knowledge</div>
-        <div class="header-actions">
-          ${
-            this.saving
-              ? html`
-                  <div class="saving-indicator">
-                    <div class="spinner"></div>
-                    Saving
-                  </div>
-                `
-              : nothing
-          }
-          <input class="search-input" placeholder="Search..." .value=${this.search}
-            @input=${(e: InputEvent) => {
-              this.search = (e.target as HTMLInputElement).value;
-            }} />
+      <div class="main-container">
+        <div class="header">
+          <div class="title"><span class="icon icon-lg">${icons.book}</span> Knowledge</div>
+          <div class="header-actions">
+            ${
+              this.saving
+                ? html`
+                    <div class="saving-indicator">
+                      <div class="spinner"></div>
+                      Saving
+                    </div>
+                  `
+                : nothing
+            }
+            <input class="search-input" placeholder="Search..." .value=${this.search}
+              @input=${(e: InputEvent) => {
+                this.search = (e.target as HTMLInputElement).value;
+              }} />
+          </div>
         </div>
-      </div>
-      <div class="tabs">
-        <button class="tab ${this.activeTab === "inbox" ? "active" : ""}" @click=${() => {
-          this.activeTab = "inbox";
-        }}>
-          <span class="icon">${icons.inbox}</span> Inbox <span class="tab-badge">${inboxCount}</span>
-        </button>
-        <button class="tab ${this.activeTab === "notes" ? "active" : ""}" @click=${() => {
-          this.activeTab = "notes";
-        }}>
-          <span class="icon">${icons.fileText}</span> Notes <span class="tab-badge">${notesCount}</span>
-        </button>
-        <button class="tab ${this.activeTab === "references" ? "active" : ""}" @click=${() => {
-          this.activeTab = "references";
-        }}>
-          <span class="icon">${icons.link}</span> Links <span class="tab-badge">${refsCount}</span>
-        </button>
-      </div>
-      <div class="content">
-        ${this.activeTab === "inbox" ? this.renderInboxTab() : nothing}
-        ${this.activeTab === "notes" ? this.renderNotesTab() : nothing}
-        ${this.activeTab === "references" ? this.renderReferencesTab() : nothing}
+        <div class="tabs">
+          <button class="tab ${this.activeTab === "inbox" ? "active" : ""}" @click=${() => {
+            this.activeTab = "inbox";
+          }}>
+            <span class="icon">${icons.inbox}</span> Inbox <span class="tab-badge">${inboxCount}</span>
+          </button>
+          <button class="tab ${this.activeTab === "notes" ? "active" : ""}" @click=${() => {
+            this.activeTab = "notes";
+          }}>
+            <span class="icon">${icons.fileText}</span> Notes <span class="tab-badge">${notesCount}</span>
+          </button>
+          <button class="tab ${this.activeTab === "references" ? "active" : ""}" @click=${() => {
+            this.activeTab = "references";
+          }}>
+            <span class="icon">${icons.link}</span> Links <span class="tab-badge">${refsCount}</span>
+          </button>
+        </div>
+        <div class="content">
+          ${this.activeTab === "inbox" ? this.renderInboxTab() : nothing}
+          ${this.activeTab === "notes" ? this.renderNotesTab() : nothing}
+          ${this.activeTab === "references" ? this.renderReferencesTab() : nothing}
+        </div>
       </div>
       ${this.renderCreateModal()}
     `;

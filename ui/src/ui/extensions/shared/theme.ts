@@ -28,11 +28,11 @@ export const ocTheme = css`
 
     --primary: hsl(221.2 83.2% 53.3%);
     --primary-foreground: hsl(210 40% 98%);
-    --secondary: hsl(210 40% 96%);
-    --secondary-foreground: hsl(222.2 84% 4.9%);
+    --secondary: hsl(210 20% 96%);
+    --secondary-foreground: hsl(222 48% 11%);
 
-    --muted: hsl(210 40% 96%);
-    --muted-foreground: hsl(215.4 16.3% 46.9%);
+    --muted: hsl(215 16% 47%);
+    --muted-foreground: hsl(215 16% 47%);
     --accent: hsl(0 84.2% 60.2%);
     --accent-foreground: hsl(0 0% 100%);
 
@@ -46,28 +46,28 @@ export const ocTheme = css`
     /* ── Legacy Aliases (used by extension views) ── */
     --bg: hsl(0 0% 100%);
     --bg-elevated: hsl(0 0% 100%);
-    --bg-hover: hsl(210 40% 96%);
-    --bg-muted: hsl(210 40% 98%);
-    --text: hsl(224 71.4% 4.1%);
-    --text-strong: hsl(224 71.4% 4.1%);
+    --bg-hover: hsl(210 20% 96%);
+    --bg-muted: hsl(210 20% 97%);
+    --text: hsl(224 71% 4%);
+    --text-strong: hsl(224 71% 4%);
     --border-strong: hsl(213 27% 84%);
     --panel: hsl(0 0% 100%);
-    --card-highlight: hsl(210 40% 98%);
+    --card-highlight: hsl(210 20% 97%);
 
-    --accent-hover: hsl(0 84.2% 55%);
-    --accent-subtle: hsla(0, 84.2%, 60.2%, 0.08);
-    --accent-glow: hsla(0, 84.2%, 60.2%, 0.15);
+    --accent-hover: hsl(0 72% 50%);
+    --accent-subtle: hsla(0, 72%, 51%, 0.1);
+    --accent-glow: hsla(0, 72%, 51%, 0.18);
 
-    --danger: hsl(0 84.2% 60.2%);
-    --danger-subtle: hsl(0 93% 94%);
-    --error: hsl(0 84.2% 60.2%);
-    --ok: hsl(142 76% 36%);
-    --ok-subtle: hsl(138 76% 97%);
+    --danger: hsl(0 72% 51%);
+    --danger-subtle: hsl(0 86% 95%);
+    --error: hsl(0 72% 51%);
+    --ok: hsl(142 71% 36%);
+    --ok-subtle: hsl(143 64% 94%);
     --warn: hsl(38 92% 50%);
     --warn-subtle: hsl(48 96% 89%);
 
-    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 
     --duration-fast: 150ms;
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
