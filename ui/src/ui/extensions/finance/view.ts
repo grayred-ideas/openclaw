@@ -94,9 +94,6 @@ export class FinanceView extends LitElement {
     end: new Date().toISOString().split("T")[0],
   };
 
-  // View mode state for invoice list/card toggle
-  @state() private viewMode: "card" | "list" = "card";
-
   // Usage/Cost tracking
   @state() private usageSummary: UsageSummary | null = null;
   @state() private costUsageSummary: CostUsageSummary | null = null;
@@ -181,7 +178,7 @@ export class FinanceView extends LitElement {
       padding: 8px 16px;
       border: 1px solid var(--border);
       background: var(--bg-elevated);
-      color: var(--text);
+      color: var(--muted);
       border-radius: var(--radius-md);
       cursor: pointer;
       font-size: 13px;
@@ -572,7 +569,6 @@ export class FinanceView extends LitElement {
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 8px;
-      font-weight: 500;
     }
 
     .stat-value {
@@ -1182,75 +1178,11 @@ export class FinanceView extends LitElement {
       color: var(--border);
     }
 
-    /* View toggle buttons */
-    .btn-view-toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all var(--duration-fast) var(--ease-out);
-    }
-
-    .btn-view-toggle:hover {
-      background: var(--bg-hover);
-      color: var(--text);
-    }
-
-    .btn-view-toggle.active {
-      background: var(--accent);
-      color: white;
-    }
-
-    .btn-view-toggle .icon {
-      width: 16px;
-      height: 16px;
-    }
-
     /* Improved invoice cards */
     .invoice-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 16px;
-    }
-
-    /* Invoice list view */
-    .invoice-list {
-      width: 100%;
-    }
-
-    .invoice-list table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .invoice-list th {
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      color: var(--muted);
-      font-weight: 500;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .invoice-list td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-
-    .invoice-list tbody tr:hover {
-      background: var(--bg-hover);
-    }
-
-    .invoice-list tbody tr:last-child td {
-      border-bottom: none;
     }
 
     .invoice-card {
@@ -2042,49 +1974,15 @@ export class FinanceView extends LitElement {
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">All Invoices (${invoices.length})</h3>
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <!-- View Toggle -->
-            <div style="display: flex; gap: 4px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 2px;">
-              <button 
-                class="btn-view-toggle ${this.viewMode === "card" ? "active" : ""}" 
-                @click=${() => (this.viewMode = "card")}
-                title="Card View">
-                <span class="icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                  </svg>
-                </span>
-              </button>
-              <button 
-                class="btn-view-toggle ${this.viewMode === "list" ? "active" : ""}" 
-                @click=${() => (this.viewMode = "list")}
-                title="List View">
-                <span class="icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="8" x2="21" y1="6" y2="6"/>
-                    <line x1="8" x2="21" y1="12" y2="12"/>
-                    <line x1="8" x2="21" y1="18" y2="18"/>
-                    <line x1="3" x2="3.01" y1="6" y2="6"/>
-                    <line x1="3" x2="3.01" y1="12" y2="12"/>
-                    <line x1="3" x2="3.01" y1="18" y2="18"/>
-                  </svg>
-                </span>
-              </button>
-            </div>
-            
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" @click=${() => {
-                this.showInvoiceUpload = true;
-              }}>
-                <span class="icon">${icons.plus}</span> Add Single
-              </button>
-              <button class="btn btn-primary btn-sm" @click=${() => this.startBulkUpload()}>
-                <span class="icon">${icons.upload}</span> Upload Invoices
-              </button>
-            </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" @click=${() => {
+              this.showInvoiceUpload = true;
+            }}>
+              <span class="icon">${icons.plus}</span> Add Single
+            </button>
+            <button class="btn btn-primary btn-sm" @click=${() => this.startBulkUpload()}>
+              <span class="icon">${icons.upload}</span> Upload Invoices
+            </button>
           </div>
         </div>
         
@@ -2099,10 +1997,6 @@ export class FinanceView extends LitElement {
             `
             : html`
               <div class="filter-bar">
-                <div class="filter-group">
-                  <span class="filter-label">Search:</span>
-                  <input type="text" class="filter-select" placeholder="Search vendors..." />
-                </div>
                 <div class="filter-group">
                   <span class="filter-label">Category:</span>
                   <select class="filter-select">
@@ -2126,34 +2020,9 @@ export class FinanceView extends LitElement {
                 </div>
               </div>
               
-              ${
-                this.viewMode === "card"
-                  ? html`
-                  <div class="invoice-grid">
-                    ${invoices.map((inv) => this.renderInvoiceCard(inv))}
-                  </div>
-                `
-                  : html`
-                  <div class="invoice-list">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Vendor</th>
-                          <th>Amount</th>
-                          <th>Date</th>
-                          <th>Category</th>
-                          <th>Company</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${invoices.map((inv) => this.renderInvoiceListRow(inv))}
-                      </tbody>
-                    </table>
-                  </div>
-                `
-              }
+              <div class="invoice-grid">
+                ${invoices.map((inv) => this.renderInvoiceCard(inv))}
+              </div>
             `
         }
       </div>
@@ -2169,54 +2038,6 @@ export class FinanceView extends LitElement {
       this.expandedInvoices.add(invoiceId);
     }
     this.requestUpdate();
-  }
-
-  private renderInvoiceListRow(invoice: Invoice) {
-    return html`
-      <tr>
-        <td>
-          <div style="font-weight: 500;">${invoice.vendor}</div>
-          ${
-            invoice.description
-              ? html`
-            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
-              ${invoice.description.slice(0, 50)}${invoice.description.length > 50 ? "..." : ""}
-            </div>
-          `
-              : nothing
-          }
-        </td>
-        <td>
-          <span class="amount">${formatCurrency(invoice.amount, invoice.currency)}</span>
-        </td>
-        <td style="color: var(--muted);">
-          ${formatDate(invoice.date)}
-        </td>
-        <td>
-          <span class="category-${invoice.category || "other"}">${invoice.category || "other"}</span>
-        </td>
-        <td>
-          <span class="company-dot ${invoice.company}"></span> ${invoice.company}
-        </td>
-        <td>
-          ${
-            invoice.statementLineId
-              ? html`<span class="status matched"><span class="icon">${icons.check}</span> Matched</span>`
-              : html`<span class="status unmatched"><span class="icon">${icons.clock}</span> Unmatched</span>`
-          }
-        </td>
-        <td>
-          <div style="display: flex; gap: 4px;">
-            <button class="btn btn-secondary btn-sm" title="Edit">
-              <span class="icon">${icons.edit}</span>
-            </button>
-            <button class="btn btn-secondary btn-sm" title="Delete">
-              <span class="icon">${icons.trash}</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
   }
 
   private renderInvoiceCard(invoice: Invoice) {
@@ -2261,7 +2082,7 @@ export class FinanceView extends LitElement {
           </a>
           <div class="invoice-actions" @click=${(e: Event) => e.stopPropagation()}>
             <button class="btn btn-secondary btn-sm">
-              <span class="icon">${icons.edit}</span>
+              <span class="icon">${icons.edit2}</span>
             </button>
             <button class="btn btn-secondary btn-sm">
               <span class="icon">${icons.trash}</span>
