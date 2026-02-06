@@ -2,6 +2,7 @@ import type { IconName } from "./icons.js";
 
 export const TAB_GROUPS = [
   { label: "Chat", tabs: ["chat"] },
+  { label: "Workspace", tabs: ["files", "kanban"] },
   {
     label: "Control",
     tabs: ["overview", "channels", "instances", "sessions", "cron"],
@@ -22,7 +23,9 @@ export type Tab =
   | "chat"
   | "config"
   | "debug"
-  | "logs";
+  | "logs"
+  | "files"
+  | "kanban";
 
 const TAB_PATHS: Record<Tab, string> = {
   agents: "/agents",
@@ -37,6 +40,8 @@ const TAB_PATHS: Record<Tab, string> = {
   config: "/config",
   debug: "/debug",
   logs: "/logs",
+  files: "/files",
+  kanban: "/kanban",
 };
 
 const PATH_TO_TAB = new Map(Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab]));
@@ -146,6 +151,10 @@ export function iconForTab(tab: Tab): IconName {
       return "bug";
     case "logs":
       return "scrollText";
+    case "files":
+      return "folder";
+    case "kanban":
+      return "fileText";
     default:
       return "folder";
   }
@@ -177,6 +186,10 @@ export function titleForTab(tab: Tab) {
       return "Debug";
     case "logs":
       return "Logs";
+    case "files":
+      return "Files";
+    case "kanban":
+      return "Tasks";
     default:
       return "Control";
   }
@@ -208,6 +221,10 @@ export function subtitleForTab(tab: Tab) {
       return "Gateway snapshots, events, and manual RPC calls.";
     case "logs":
       return "Live tail of the gateway file logs.";
+    case "files":
+      return "Browse and edit workspace files.";
+    case "kanban":
+      return "Manage tasks with drag-and-drop boards.";
     default:
       return "";
   }

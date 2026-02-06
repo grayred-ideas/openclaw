@@ -68,6 +68,8 @@ import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
+import "./extensions/file-browser/view.js";
+import "./extensions/kanban/view.js";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -1078,6 +1080,18 @@ export function renderApp(state: AppViewState) {
                   (state as unknown as OpenClawApp).exportLogs(lines, label),
                 onScroll: (event) => (state as unknown as OpenClawApp).handleLogsScroll(event),
               })
+            : nothing
+        }
+
+        ${
+          state.tab === "files"
+            ? html`<file-browser-view .gateway=${state.gateway}></file-browser-view>`
+            : nothing
+        }
+
+        ${
+          state.tab === "kanban"
+            ? html`<kanban-view .gateway=${state.gateway}></kanban-view>`
             : nothing
         }
       </main>
