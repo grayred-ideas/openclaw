@@ -1085,13 +1085,13 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "files"
-            ? html`<file-browser-view .gateway=${state.gateway}></file-browser-view>`
+            ? html`<file-browser-view .gateway=${state.client}></file-browser-view>`
             : nothing
         }
 
         ${
           state.tab === "kanban"
-            ? html`<kanban-view .gateway=${state.gateway}></kanban-view>`
+            ? html`<kanban-view .gateway=${state.client}></kanban-view>`
             : nothing
         }
       </main>

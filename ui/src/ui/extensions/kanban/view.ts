@@ -40,17 +40,18 @@ export class KanbanView extends LitElement {
     :host {
       display: block;
       height: 100%;
-      background: var(--bg-primary, #1a1a1a);
-      color: var(--text-primary, #e0e0e0);
-      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
       overflow: auto;
+      font-family: var(--font-body);
     }
 
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .title {
@@ -59,45 +60,50 @@ export class KanbanView extends LitElement {
       display: flex;
       align-items: center;
       gap: 10px;
+      color: var(--text-strong);
     }
 
     .title svg {
       width: 24px;
       height: 24px;
+      color: var(--muted);
     }
 
     .board {
       display: flex;
       gap: 16px;
-      height: calc(100% - 60px);
+      height: calc(100% - 70px);
       min-height: 400px;
     }
 
     .column {
       flex: 1;
-      min-width: 250px;
-      max-width: 350px;
-      background: var(--bg-secondary, #242424);
-      border-radius: 12px;
+      min-width: 260px;
+      max-width: 320px;
+      background: var(--panel);
+      border-radius: var(--radius-lg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      border: 1px solid var(--border);
     }
 
     .column-header {
       padding: 14px 16px;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border-color, #333);
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-strong);
     }
 
     .column-title {
       display: flex;
       align-items: center;
       gap: 8px;
+      color: var(--text-strong);
     }
 
     .column-dot {
@@ -107,11 +113,12 @@ export class KanbanView extends LitElement {
     }
 
     .column-count {
-      background: var(--bg-tertiary, #333);
+      background: var(--bg-muted);
       padding: 2px 8px;
-      border-radius: 10px;
+      border-radius: var(--radius-full);
       font-size: 12px;
       font-weight: 500;
+      color: var(--muted);
     }
 
     .column-body {
@@ -125,45 +132,49 @@ export class KanbanView extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      min-height: 50px;
+      min-height: 60px;
     }
 
     .task-card {
-      background: var(--bg-tertiary, #2a2a2a);
-      border-radius: 8px;
+      background: var(--card);
+      border-radius: var(--radius-md);
       padding: 12px;
       cursor: grab;
-      transition: all 0.15s;
-      border: 1px solid transparent;
+      transition: all var(--duration-fast) var(--ease-out);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
     }
 
     .task-card:hover {
-      border-color: var(--border-color, #444);
-      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-md);
     }
 
     .task-card.sortable-ghost {
       opacity: 0.4;
+      background: var(--accent-subtle);
     }
 
     .task-card.sortable-chosen {
       cursor: grabbing;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent);
     }
 
     .task-title {
       font-size: 14px;
       line-height: 1.4;
       word-break: break-word;
+      color: var(--text);
     }
 
     .task-title-input {
       width: 100%;
-      background: var(--bg-primary, #1a1a1a);
-      border: 1px solid var(--accent-color, #6366f1);
-      border-radius: 4px;
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
       padding: 6px 8px;
-      color: inherit;
+      color: var(--text);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -175,7 +186,7 @@ export class KanbanView extends LitElement {
       margin-top: 8px;
       gap: 8px;
       opacity: 0;
-      transition: opacity 0.15s;
+      transition: opacity var(--duration-fast);
     }
 
     .task-card:hover .task-actions {
@@ -188,16 +199,17 @@ export class KanbanView extends LitElement {
       padding: 4px;
       cursor: pointer;
       opacity: 0.5;
-      transition: opacity 0.15s;
-      color: inherit;
+      transition: opacity var(--duration-fast);
+      color: var(--muted);
     }
 
     .task-action-btn:hover {
       opacity: 1;
+      color: var(--text);
     }
 
     .task-action-btn.delete:hover {
-      color: #ef4444;
+      color: var(--danger);
     }
 
     .task-action-btn svg {
@@ -209,34 +221,36 @@ export class KanbanView extends LitElement {
       width: 100%;
       padding: 10px;
       background: transparent;
-      border: 2px dashed var(--border-color, #333);
-      border-radius: 8px;
-      color: var(--text-secondary, #888);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      color: var(--muted);
       cursor: pointer;
       font-size: 13px;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
       margin-top: 8px;
     }
 
     .add-task-btn:hover {
-      border-color: var(--accent-color, #6366f1);
-      color: var(--accent-color, #6366f1);
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-subtle);
     }
 
     .add-task-form {
-      background: var(--bg-tertiary, #2a2a2a);
-      border-radius: 8px;
+      background: var(--card);
+      border-radius: var(--radius-md);
       padding: 12px;
       margin-top: 8px;
+      border: 1px solid var(--border);
     }
 
     .add-task-input {
       width: 100%;
-      background: var(--bg-primary, #1a1a1a);
-      border: 1px solid var(--border-color, #333);
-      border-radius: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       padding: 10px 12px;
-      color: inherit;
+      color: var(--text);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -244,7 +258,11 @@ export class KanbanView extends LitElement {
     }
 
     .add-task-input:focus {
-      border-color: var(--accent-color, #6366f1);
+      border-color: var(--accent);
+    }
+
+    .add-task-input::placeholder {
+      color: var(--muted);
     }
 
     .add-task-actions {
@@ -255,30 +273,29 @@ export class KanbanView extends LitElement {
 
     .btn {
       padding: 6px 12px;
-      border-radius: 6px;
-      border: none;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    .btn:hover {
+      background: var(--bg-hover);
     }
 
     .btn-primary {
-      background: var(--accent-color, #6366f1);
-      color: white;
+      background: var(--accent);
+      color: var(--accent-foreground);
+      border-color: var(--accent);
     }
 
     .btn-primary:hover {
-      background: var(--accent-hover, #5558e3);
-    }
-
-    .btn-secondary {
-      background: var(--bg-tertiary, #333);
-      color: var(--text-primary, #e0e0e0);
-    }
-
-    .btn-secondary:hover {
-      background: var(--bg-hover, #3a3a3a);
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
     }
 
     .loading {
@@ -286,13 +303,13 @@ export class KanbanView extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100%;
-      opacity: 0.5;
+      color: var(--muted);
     }
 
     .empty-column {
       text-align: center;
       padding: 20px;
-      opacity: 0.4;
+      color: var(--muted);
       font-size: 13px;
     }
   `;
@@ -310,7 +327,8 @@ export class KanbanView extends LitElement {
   updated(changedProps: Map<string, unknown>) {
     super.updated(changedProps);
     if (changedProps.has("tasks") && !this.loading) {
-      this.initSortable();
+      // Delay sortable init to ensure DOM is ready
+      setTimeout(() => this.initSortable(), 0);
     }
   }
 
@@ -338,33 +356,31 @@ export class KanbanView extends LitElement {
   private initSortable() {
     this.destroySortable();
 
-    requestAnimationFrame(() => {
-      const columns = this.shadowRoot?.querySelectorAll(".task-list");
-      columns?.forEach((col) => {
-        const sortable = Sortable.create(col as HTMLElement, {
-          group: "tasks",
-          animation: 150,
-          ghostClass: "sortable-ghost",
-          chosenClass: "sortable-chosen",
-          onEnd: (evt) => this.handleDragEnd(evt),
-        });
-        this.sortableInstances.push(sortable);
+    const columns = this.shadowRoot?.querySelectorAll(".task-list");
+    columns?.forEach((col) => {
+      const sortable = Sortable.create(col as HTMLElement, {
+        group: "kanban-tasks",
+        animation: 150,
+        ghostClass: "sortable-ghost",
+        chosenClass: "sortable-chosen",
+        dragClass: "sortable-drag",
+        onEnd: (evt) => this.handleDragEnd(evt),
       });
+      this.sortableInstances.push(sortable);
     });
   }
 
   private handleDragEnd(evt: Sortable.SortableEvent) {
     const taskId = evt.item.dataset.taskId;
-    const newStatus = evt.to.dataset.status as TaskStatus;
+    const toEl = evt.to as HTMLElement;
+    const newStatus = toEl.dataset.status as TaskStatus;
 
     if (taskId && newStatus) {
       const taskIndex = this.tasks.findIndex((t) => t.id === taskId);
-      if (taskIndex !== -1) {
-        this.tasks = [
-          ...this.tasks.slice(0, taskIndex),
-          moveTask(this.tasks[taskIndex], newStatus),
-          ...this.tasks.slice(taskIndex + 1),
-        ];
+      if (taskIndex !== -1 && this.tasks[taskIndex].status !== newStatus) {
+        const updatedTasks = [...this.tasks];
+        updatedTasks[taskIndex] = moveTask(updatedTasks[taskIndex], newStatus);
+        this.tasks = updatedTasks;
         this.saveData();
       }
     }
@@ -374,7 +390,9 @@ export class KanbanView extends LitElement {
     this.addingToColumn = status;
     this.newTaskTitle = "";
     requestAnimationFrame(() => {
-      const input = this.shadowRoot?.querySelector(".add-task-input") as HTMLInputElement;
+      const input = this.shadowRoot?.querySelector(
+        `.column[data-status="${status}"] .add-task-input`,
+      ) as HTMLInputElement;
       input?.focus();
     });
   }
@@ -404,18 +422,30 @@ export class KanbanView extends LitElement {
 
   private startEditTask(taskId: string) {
     this.editingTaskId = taskId;
+    requestAnimationFrame(() => {
+      const input = this.shadowRoot?.querySelector(
+        `.task-card[data-task-id="${taskId}"] .task-title-input`,
+      ) as HTMLInputElement;
+      input?.focus();
+      input?.select();
+    });
   }
 
   private saveTaskTitle(taskId: string, newTitle: string) {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      this.editingTaskId = null;
+      return;
+    }
 
     const taskIndex = this.tasks.findIndex((t) => t.id === taskId);
     if (taskIndex !== -1) {
-      this.tasks = [
-        ...this.tasks.slice(0, taskIndex),
-        { ...this.tasks[taskIndex], title: newTitle.trim(), updatedAt: Date.now() },
-        ...this.tasks.slice(taskIndex + 1),
-      ];
+      const updatedTasks = [...this.tasks];
+      updatedTasks[taskIndex] = {
+        ...updatedTasks[taskIndex],
+        title: newTitle.trim(),
+        updatedAt: Date.now(),
+      };
+      this.tasks = updatedTasks;
       this.saveData();
     }
     this.editingTaskId = null;
@@ -431,7 +461,8 @@ export class KanbanView extends LitElement {
     }
   }
 
-  private handleDeleteTask(taskId: string) {
+  private handleDeleteTask(taskId: string, e: Event) {
+    e.stopPropagation();
     this.tasks = deleteTask(this.tasks, taskId);
     this.saveData();
   }
@@ -477,8 +508,7 @@ export class KanbanView extends LitElement {
                 class="task-title-input"
                 .value=${task.title}
                 @keydown=${(e: KeyboardEvent) => this.handleEditKeydown(e, task.id)}
-                @blur=${(e: FocusEvent) =>
-                  this.saveTaskTitle(task.id, (e.target as HTMLInputElement).value)}
+                @blur=${(e: FocusEvent) => this.saveTaskTitle(task.id, (e.target as HTMLInputElement).value)}
               />
             `
             : html`
@@ -487,14 +517,17 @@ export class KanbanView extends LitElement {
                 <button
                   class="task-action-btn"
                   title="Edit"
-                  @click=${() => this.startEditTask(task.id)}
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this.startEditTask(task.id);
+                  }}
                 >
                   ${this.renderEditIcon()}
                 </button>
                 <button
                   class="task-action-btn delete"
                   title="Delete"
-                  @click=${() => this.handleDeleteTask(task.id)}
+                  @click=${(e: Event) => this.handleDeleteTask(task.id, e)}
                 >
                   ${this.renderDeleteIcon()}
                 </button>
@@ -509,7 +542,7 @@ export class KanbanView extends LitElement {
     const columnTasks = getTasksByStatus(this.tasks, column.id);
 
     return html`
-      <div class="column">
+      <div class="column" data-status=${column.id}>
         <div class="column-header">
           <div class="column-title">
             <div class="column-dot" style="background: ${column.color}"></div>
@@ -519,13 +552,7 @@ export class KanbanView extends LitElement {
         </div>
         <div class="column-body">
           <div class="task-list" data-status=${column.id}>
-            ${
-              columnTasks.length === 0
-                ? html`
-                    <div class="empty-column">No tasks</div>
-                  `
-                : columnTasks.map((task) => this.renderTask(task))
-            }
+            ${columnTasks.map((task) => this.renderTask(task))}
           </div>
           ${
             this.addingToColumn === column.id
@@ -536,12 +563,11 @@ export class KanbanView extends LitElement {
                     class="add-task-input"
                     placeholder="Task title..."
                     .value=${this.newTaskTitle}
-                    @input=${(e: InputEvent) =>
-                      (this.newTaskTitle = (e.target as HTMLInputElement).value)}
+                    @input=${(e: InputEvent) => (this.newTaskTitle = (e.target as HTMLInputElement).value)}
                     @keydown=${this.handleAddTaskKeydown}
                   />
                   <div class="add-task-actions">
-                    <button class="btn btn-secondary" @click=${this.cancelAddTask}>Cancel</button>
+                    <button class="btn" @click=${this.cancelAddTask}>Cancel</button>
                     <button class="btn btn-primary" @click=${this.addTask}>Add</button>
                   </div>
                 </div>

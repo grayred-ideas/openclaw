@@ -44,32 +44,35 @@ export class FileBrowserView extends LitElement {
     :host {
       display: flex;
       height: 100%;
-      background: var(--bg-primary, #1a1a1a);
-      color: var(--text-primary, #e0e0e0);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
     }
 
     .sidebar {
-      width: 250px;
+      width: 260px;
       min-width: 200px;
-      border-right: 1px solid var(--border-color, #333);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      background: var(--bg-secondary, #242424);
+      background: var(--panel);
     }
 
     .sidebar-header {
       padding: 16px;
       font-weight: 600;
       font-size: 14px;
-      border-bottom: 1px solid var(--border-color, #333);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 8px;
+      color: var(--text-strong);
     }
 
     .sidebar-header svg {
       width: 18px;
       height: 18px;
+      color: var(--muted);
     }
 
     .file-list {
@@ -85,16 +88,17 @@ export class FileBrowserView extends LitElement {
       align-items: center;
       gap: 10px;
       font-size: 13px;
-      transition: background 0.15s;
+      transition: background var(--duration-fast) var(--ease-out);
+      color: var(--text);
     }
 
     .file-item:hover {
-      background: var(--bg-hover, #2a2a2a);
+      background: var(--bg-hover);
     }
 
     .file-item.selected {
-      background: var(--bg-selected, #3a3a3a);
-      border-left: 3px solid var(--accent-color, #6366f1);
+      background: var(--accent-subtle);
+      border-left: 3px solid var(--accent);
     }
 
     .file-item.missing {
@@ -105,7 +109,7 @@ export class FileBrowserView extends LitElement {
     .file-icon {
       width: 16px;
       height: 16px;
-      opacity: 0.7;
+      color: var(--muted);
     }
 
     .file-name {
@@ -117,7 +121,7 @@ export class FileBrowserView extends LitElement {
 
     .file-size {
       font-size: 11px;
-      opacity: 0.5;
+      color: var(--muted);
     }
 
     .content-area {
@@ -129,11 +133,11 @@ export class FileBrowserView extends LitElement {
 
     .content-header {
       padding: 12px 16px;
-      border-bottom: 1px solid var(--border-color, #333);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-secondary, #242424);
+      background: var(--panel);
     }
 
     .content-title {
@@ -142,6 +146,7 @@ export class FileBrowserView extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
+      color: var(--text-strong);
     }
 
     .content-actions {
@@ -151,21 +156,30 @@ export class FileBrowserView extends LitElement {
 
     .btn {
       padding: 6px 12px;
-      border-radius: 6px;
-      border: none;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    .btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-strong);
     }
 
     .btn-primary {
-      background: var(--accent-color, #6366f1);
-      color: white;
+      background: var(--accent);
+      color: var(--accent-foreground);
+      border-color: var(--accent);
     }
 
     .btn-primary:hover {
-      background: var(--accent-hover, #5558e3);
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
     }
 
     .btn-primary:disabled {
@@ -173,24 +187,17 @@ export class FileBrowserView extends LitElement {
       cursor: not-allowed;
     }
 
-    .btn-secondary {
-      background: var(--bg-tertiary, #333);
-      color: var(--text-primary, #e0e0e0);
-    }
-
-    .btn-secondary:hover {
-      background: var(--bg-hover, #3a3a3a);
-    }
-
     .content-body {
       flex: 1;
       overflow: auto;
-      padding: 16px;
+      padding: 20px;
+      background: var(--bg);
     }
 
     .markdown-preview {
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 14px;
+      max-width: 800px;
     }
 
     .markdown-preview h1,
@@ -199,11 +206,12 @@ export class FileBrowserView extends LitElement {
       margin-top: 24px;
       margin-bottom: 12px;
       font-weight: 600;
+      color: var(--text-strong);
     }
 
     .markdown-preview h1 {
       font-size: 24px;
-      border-bottom: 1px solid var(--border-color, #333);
+      border-bottom: 1px solid var(--border);
       padding-bottom: 8px;
     }
 
@@ -230,18 +238,19 @@ export class FileBrowserView extends LitElement {
     }
 
     .markdown-preview code {
-      background: var(--bg-tertiary, #333);
+      background: var(--bg-muted);
       padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
+      border-radius: var(--radius-sm);
+      font-family: var(--mono);
       font-size: 13px;
     }
 
     .markdown-preview pre {
-      background: var(--bg-tertiary, #333);
-      padding: 12px;
-      border-radius: 8px;
+      background: var(--bg-muted);
+      padding: 16px;
+      border-radius: var(--radius-md);
       overflow-x: auto;
+      border: 1px solid var(--border);
     }
 
     .markdown-preview pre code {
@@ -250,10 +259,10 @@ export class FileBrowserView extends LitElement {
     }
 
     .markdown-preview blockquote {
-      border-left: 3px solid var(--accent-color, #6366f1);
+      border-left: 3px solid var(--accent);
       margin: 12px 0;
       padding-left: 16px;
-      opacity: 0.8;
+      color: var(--muted);
     }
 
     .markdown-preview table {
@@ -264,24 +273,34 @@ export class FileBrowserView extends LitElement {
 
     .markdown-preview th,
     .markdown-preview td {
-      border: 1px solid var(--border-color, #333);
-      padding: 8px 12px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
       text-align: left;
     }
 
     .markdown-preview th {
-      background: var(--bg-secondary, #242424);
+      background: var(--panel);
+      font-weight: 600;
+      color: var(--text-strong);
+    }
+
+    .markdown-preview a {
+      color: var(--accent);
+    }
+
+    .markdown-preview strong {
+      color: var(--text-strong);
       font-weight: 600;
     }
 
     .edit-textarea {
       width: 100%;
       height: 100%;
-      background: var(--bg-primary, #1a1a1a);
-      color: var(--text-primary, #e0e0e0);
+      background: var(--bg);
+      color: var(--text);
       border: none;
       resize: none;
-      font-family: monospace;
+      font-family: var(--mono);
       font-size: 13px;
       line-height: 1.6;
       padding: 0;
@@ -294,7 +313,7 @@ export class FileBrowserView extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100%;
-      opacity: 0.5;
+      color: var(--muted);
       gap: 12px;
     }
 
@@ -303,17 +322,19 @@ export class FileBrowserView extends LitElement {
       height: 48px;
     }
 
-    .loading {
+    .loading,
+    .error-state {
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100%;
-      opacity: 0.5;
+      color: var(--muted);
+      padding: 20px;
+      text-align: center;
     }
 
-    .error {
-      color: #ef4444;
-      padding: 16px;
+    .error-state {
+      color: var(--danger);
     }
   `;
 
@@ -322,9 +343,16 @@ export class FileBrowserView extends LitElement {
     this.loadFiles();
   }
 
+  updated(changedProps: Map<string, unknown>) {
+    super.updated(changedProps);
+    if (changedProps.has("gateway") && this.gateway) {
+      this.loadFiles();
+    }
+  }
+
   private async loadFiles() {
     if (!this.gateway) {
-      this.error = "No gateway connection";
+      this.error = "Waiting for gateway connection...";
       this.loading = false;
       return;
     }
@@ -337,7 +365,7 @@ export class FileBrowserView extends LitElement {
       this.files = result.files.filter((f) => !f.missing);
       this.loading = false;
     } else {
-      this.error = "Failed to load files";
+      this.error = "Failed to load workspace files";
       this.loading = false;
     }
   }
@@ -410,14 +438,19 @@ export class FileBrowserView extends LitElement {
         <polyline points="14 2 14 8 20 8"></polyline>
         <line x1="16" y1="13" x2="8" y2="13"></line>
         <line x1="16" y1="17" x2="8" y2="17"></line>
-        <polyline points="10 9 9 9 8 9"></polyline>
       </svg>
     `;
   }
 
   private renderFolderIcon() {
     return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg
+        style="width: 18px; height: 18px"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
       </svg>
     `;
@@ -437,19 +470,23 @@ export class FileBrowserView extends LitElement {
                   <div class="loading">Loading...</div>
                 `
               : this.error
-                ? html`<div class="error">${this.error}</div>`
-                : this.files.map(
-                    (file) => html`
-                    <div
-                      class="file-item ${file.missing ? "missing" : ""} ${this.selectedFile?.name === file.name ? "selected" : ""}"
-                      @click=${() => this.selectFile(file)}
-                    >
-                      ${this.renderFileIcon()}
-                      <span class="file-name">${file.name}</span>
-                      <span class="file-size">${this.formatFileSize(file.size)}</span>
-                    </div>
-                  `,
-                  )
+                ? html`<div class="error-state">${this.error}</div>`
+                : this.files.length === 0
+                  ? html`
+                      <div class="empty-state">No files found</div>
+                    `
+                  : this.files.map(
+                      (file) => html`
+                      <div
+                        class="file-item ${file.missing ? "missing" : ""} ${this.selectedFile?.name === file.name ? "selected" : ""}"
+                        @click=${() => this.selectFile(file)}
+                      >
+                        ${this.renderFileIcon()}
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${this.formatFileSize(file.size)}</span>
+                      </div>
+                    `,
+                    )
           }
         </div>
       </div>
@@ -466,7 +503,7 @@ export class FileBrowserView extends LitElement {
                   ${
                     this.isEditing
                       ? html`
-                        <button class="btn btn-secondary" @click=${this.cancelEdit}>Cancel</button>
+                        <button class="btn" @click=${this.cancelEdit}>Cancel</button>
                         <button
                           class="btn btn-primary"
                           @click=${this.saveFile}
@@ -476,7 +513,7 @@ export class FileBrowserView extends LitElement {
                         </button>
                       `
                       : html`
-                        <button class="btn btn-secondary" @click=${this.toggleEdit}>Edit</button>
+                        <button class="btn" @click=${this.toggleEdit}>Edit</button>
                       `
                   }
                 </div>
