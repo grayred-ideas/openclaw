@@ -107,7 +107,7 @@ export class KanbanView extends LitElement {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 12px 16px;
+        padding: 1rem;
         background: var(--card);
         border-radius: var(--radius-lg);
         border: 1px solid var(--border);
@@ -122,39 +122,9 @@ export class KanbanView extends LitElement {
       }
 
       .filter-label {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: var(--oc-text-sm);
+        font-weight: var(--oc-weight-medium);
         color: var(--foreground);
-      }
-
-      .filter-select {
-        appearance: none;
-        -webkit-appearance: none;
-        background: var(--background);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 6px 28px 6px 10px;
-        color: var(--foreground);
-        font-size: 13px;
-        font-family: var(--oc-font-sans);
-        outline: none;
-        cursor: pointer;
-        height: 34px;
-        min-width: 130px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        background-size: 14px;
-        transition: border-color var(--oc-duration-fast) var(--oc-ease);
-      }
-
-      .filter-select:hover {
-        border-color: var(--oc-gray-300);
-      }
-
-      .filter-select:focus {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
       }
 
       .active-filters {
@@ -209,16 +179,16 @@ export class KanbanView extends LitElement {
       .saving-indicator {
         display: flex;
         align-items: center;
-        gap: 0.375rem;
-        font-size: 0.75rem;
-        color: var(--muted-foreground);
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
       }
 
       .spinner {
-        width: 0.875rem;
-        height: 0.875rem;
+        width: 14px;
+        height: 14px;
         border: 2px solid var(--border);
-        border-top-color: var(--primary);
+        border-top-color: var(--accent);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -231,76 +201,75 @@ export class KanbanView extends LitElement {
 
       .board {
         display: flex;
-        gap: 1rem;
-        height: calc(100% - 4.375rem);
-        min-height: 25rem;
+        gap: 16px;
+        height: calc(100% - 70px);
+        min-height: 400px;
       }
 
       .column {
         flex: 1;
-        min-width: 16.25rem;
-        max-width: 20rem;
-        background: var(--card);
+        min-width: 260px;
+        max-width: 320px;
+        background: var(--panel);
         border-radius: var(--radius-lg);
         display: flex;
         flex-direction: column;
         overflow: hidden;
         border: 1px solid var(--border);
-        box-shadow: var(--oc-shadow-sm);
       }
 
       .column-header {
-        padding: 0.875rem 1rem;
-        font-weight: var(--oc-weight-semibold);
-        font-size: var(--oc-text-sm);
+        padding: 14px 16px;
+        font-weight: 600;
+        font-size: 13px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border-bottom: 1px solid var(--border);
-        background: var(--muted);
+        background: var(--panel-strong);
       }
 
       .column-title {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        color: var(--foreground);
+        gap: 8px;
+        color: var(--text-strong);
       }
 
       .column-dot {
-        width: 0.625rem;
-        height: 0.625rem;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
       }
 
       .column-count {
-        background: var(--secondary);
-        padding: 0.125rem 0.5rem;
+        background: var(--bg-muted);
+        padding: 2px 8px;
         border-radius: var(--radius-full);
-        font-size: 0.75rem;
-        font-weight: var(--oc-weight-medium);
-        color: var(--muted-foreground);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--muted);
       }
 
       .column-body {
         flex: 1;
-        padding: 0.75rem;
+        padding: 12px;
         overflow-y: auto;
-        min-height: 6.25rem;
+        min-height: 100px;
       }
 
       .task-list {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        min-height: 3.75rem;
+        gap: 8px;
+        min-height: 60px;
       }
 
       .empty-message {
         text-align: center;
-        padding: 1.5rem 1rem;
-        color: var(--muted-foreground);
-        font-size: var(--oc-text-sm);
+        padding: 24px 16px;
+        color: var(--muted);
+        font-size: 13px;
         font-style: italic;
       }
 
@@ -309,11 +278,14 @@ export class KanbanView extends LitElement {
         border-radius: var(--radius-lg);
         padding: 0;
         transition:
-          border-color var(--oc-duration-fast) var(--oc-ease),
-          box-shadow var(--oc-duration-fast) var(--oc-ease);
+          border-color var(--duration-fast) var(--ease-out),
+          box-shadow var(--duration-fast) var(--ease-out);
         border: 1px solid var(--border);
-        box-shadow: var(--oc-shadow-sm);
+        box-shadow: var(--shadow-sm);
         outline: none;
+      }
+
+      .task-card {
         cursor: grab;
       }
 
@@ -322,13 +294,12 @@ export class KanbanView extends LitElement {
       }
 
       .task-card:hover {
-        border-color: var(--oc-gray-300);
-        box-shadow: var(--oc-shadow-md);
+        border-color: var(--border-strong);
       }
 
       .task-card:focus-visible {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-subtle);
       }
 
       .task-card.dragging {
@@ -336,27 +307,27 @@ export class KanbanView extends LitElement {
       }
 
       .drag-placeholder {
-        border: 2px dashed var(--primary);
+        border: 2px dashed var(--accent);
         border-radius: var(--radius-lg);
-        background: hsla(221.2, 83.2%, 53.3%, 0.1);
-        transition: height var(--oc-duration-fast) var(--oc-ease);
+        background: var(--accent-subtle);
+        transition: height var(--duration-fast) var(--ease-out);
       }
 
       .task-main {
         display: flex;
         align-items: flex-start;
-        gap: 0.375rem;
-        padding: 0.875rem 0.875rem 0 0.625rem;
+        gap: 6px;
+        padding: 14px 14px 0 10px;
       }
 
       .drag-handle {
         cursor: grab;
-        color: var(--muted-foreground);
+        color: var(--muted);
         opacity: 0;
-        padding: 0.25rem 0.125rem;
+        padding: 4px 2px;
         flex-shrink: 0;
-        transition: opacity var(--oc-duration-fast) var(--oc-ease);
-        margin-top: -0.0625rem;
+        transition: opacity var(--duration-fast);
+        margin-top: -1px;
       }
 
       .task-card:hover .drag-handle {
@@ -372,8 +343,8 @@ export class KanbanView extends LitElement {
       }
 
       .drag-handle svg {
-        width: 0.75rem;
-        height: 0.75rem;
+        width: 12px;
+        height: 12px;
       }
 
       .task-content {
@@ -388,15 +359,15 @@ export class KanbanView extends LitElement {
       .task-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 8px;
       }
 
       .task-title {
-        font-size: var(--oc-text-sm);
-        font-weight: var(--oc-weight-medium);
+        font-size: 13px;
+        font-weight: 500;
         line-height: 1.45;
         word-break: break-word;
-        color: var(--foreground);
+        color: var(--text-strong);
         flex: 1;
       }
 
@@ -404,7 +375,7 @@ export class KanbanView extends LitElement {
         width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 8px;
       }
 
       .task-title-input {
@@ -412,27 +383,34 @@ export class KanbanView extends LitElement {
         box-sizing: border-box;
         background: var(--card);
         border: 1px solid var(--ring);
-        border-radius: var(--radius);
-        padding: 0.5rem 0.75rem;
-        color: var(--foreground);
-        font-size: var(--oc-text-sm);
-        font-weight: var(--oc-weight-medium);
-        font-family: var(--oc-font-sans);
+        border-radius: var(--radius-md);
+        padding: 8px 12px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 500;
+        font-family: inherit;
         outline: none;
         box-shadow: var(--focus-ring);
       }
 
       .task-edit-actions {
         display: flex;
-        gap: 0.375rem;
+        gap: 6px;
         justify-content: flex-end;
       }
 
+      .btn-sm {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      /* task-meta removed — time shown in task-footer */
+
       .task-actions {
         display: flex;
-        gap: 0.25rem;
+        gap: 4px;
         opacity: 0;
-        transition: opacity var(--oc-duration-fast) var(--oc-ease);
+        transition: opacity var(--duration-fast);
         flex-shrink: 0;
       }
 
@@ -445,83 +423,80 @@ export class KanbanView extends LitElement {
       .task-action-btn {
         background: none;
         border: none;
-        padding: 0.25rem;
+        padding: 4px;
         cursor: pointer;
         opacity: 0.6;
-        transition:
-          opacity var(--oc-duration-fast) var(--oc-ease),
-          background-color var(--oc-duration-fast) var(--oc-ease);
-        color: var(--muted-foreground);
+        transition: opacity var(--duration-fast);
+        color: var(--muted);
         border-radius: var(--radius-sm);
       }
 
       .task-action-btn:hover {
         opacity: 1;
-        color: var(--foreground);
-        background: var(--accent);
+        color: var(--text);
+        background: var(--bg-hover);
       }
 
       .task-action-btn.delete:hover {
-        color: var(--destructive);
-        background: var(--oc-danger-light);
+        color: var(--danger);
       }
 
       .task-action-btn svg {
-        width: 0.875rem;
-        height: 0.875rem;
+        width: 14px;
+        height: 14px;
       }
 
       .task-body {
-        padding: 0.5rem 0.875rem 0.875rem 1.75rem;
+        padding: 8px 14px 14px 28px;
       }
 
       .task-description {
         width: 100%;
         box-sizing: border-box;
-        background: var(--background);
+        background: var(--bg);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
-        padding: 0.375rem 0.5rem;
-        color: var(--foreground);
-        font-size: 0.75rem;
-        font-family: var(--oc-font-sans);
+        padding: 6px 8px;
+        color: var(--text);
+        font-size: 12px;
+        font-family: inherit;
         line-height: 1.5;
         outline: none;
         resize: none;
         overflow: hidden;
-        min-height: 2.625rem;
+        min-height: 42px;
         cursor: text;
         transition:
-          border-color var(--oc-duration-fast) var(--oc-ease),
-          background-color var(--oc-duration-fast) var(--oc-ease),
-          box-shadow var(--oc-duration-fast) var(--oc-ease);
+          border-color var(--duration-fast) var(--ease-out),
+          background var(--duration-fast) var(--ease-out),
+          color var(--duration-fast) var(--ease-out);
       }
 
       .task-description:hover {
-        border-color: var(--oc-gray-300);
+        border-color: var(--border-strong);
       }
 
       .task-description:focus {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-subtle);
       }
 
       .task-description::placeholder {
-        color: var(--muted-foreground);
+        color: var(--muted);
       }
 
       /* Project and Tag Styles */
       .task-project {
         display: inline-flex;
         align-items: center;
-        gap: 0.25rem;
-        font-size: 0.6875rem;
-        color: var(--muted-foreground);
+        gap: 4px;
+        font-size: 11px;
+        color: var(--muted);
       }
 
       .project-dot {
-        width: 0.5rem;
-        height: 0.5rem;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         flex-shrink: 0;
       }
@@ -529,52 +504,47 @@ export class KanbanView extends LitElement {
       .project-select {
         appearance: none;
         -webkit-appearance: none;
-        background: var(--background);
+        background: var(--bg);
         border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 6px 28px 6px 10px;
-        color: var(--foreground);
-        font-size: 12px;
-        font-family: var(--oc-font-sans);
+        border-radius: var(--radius-md);
+        padding: 4px 24px 4px 8px;
+        color: var(--text);
+        font-size: 11px;
+        font-family: inherit;
         outline: none;
         cursor: pointer;
-        min-width: 120px;
-        max-width: 200px;
-        height: 32px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        max-width: 140px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 8px center;
-        background-size: 14px;
-        transition: border-color var(--oc-duration-fast) var(--oc-ease);
+        background-position: right 6px center;
+        transition: border-color var(--duration-fast) var(--ease-out);
       }
 
       .project-select:hover {
-        border-color: var(--oc-gray-300);
+        border-color: var(--border-strong);
       }
 
       .project-select:focus {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
+        border-color: var(--accent);
       }
 
       .task-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.25rem;
-        margin-top: 0.25rem;
+        gap: 4px;
+        margin-top: 4px;
       }
 
       .tag-pill {
         display: inline-flex;
         align-items: center;
-        padding: 0.125rem 0.375rem;
+        padding: 2px 6px;
         border-radius: var(--radius-full);
-        font-size: 0.625rem;
-        font-weight: var(--oc-weight-medium);
+        font-size: 10px;
+        font-weight: 500;
         color: white;
         cursor: pointer;
         line-height: 1.2;
-        transition: filter var(--oc-duration-fast) var(--oc-ease);
       }
 
       .tag-pill:hover {
@@ -584,67 +554,71 @@ export class KanbanView extends LitElement {
       .new-project-form {
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 0.5rem;
-        margin-top: 0.25rem;
+        border-radius: var(--radius-md);
+        padding: 8px;
+        margin-top: 4px;
         display: flex;
         flex-direction: column;
-        gap: 0.375rem;
+        gap: 6px;
       }
 
       .new-project-input {
-        background: var(--background);
+        background: var(--bg);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
-        padding: 0.25rem 0.375rem;
-        color: var(--foreground);
-        font-size: 0.6875rem;
-        font-family: var(--oc-font-sans);
+        padding: 4px 6px;
+        color: var(--text);
+        font-size: 11px;
+        font-family: inherit;
         outline: none;
       }
 
       .new-project-input:focus {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
+        border-color: var(--accent);
       }
 
       .new-project-actions {
         display: flex;
-        gap: 0.25rem;
+        gap: 4px;
         justify-content: flex-end;
+      }
+
+      .btn-xs {
+        padding: 3px 8px;
+        font-size: 10px;
       }
 
       .task-footer {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 0.625rem;
+        gap: 8px;
+        margin-top: 10px;
       }
 
       .task-footer-row {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 8px;
         flex-wrap: wrap;
       }
 
       .task-time {
-        font-size: 0.6875rem;
-        color: var(--muted-foreground);
+        font-size: 11px;
+        color: var(--muted);
       }
 
       .priority-badge {
         display: inline-flex;
         align-items: center;
-        padding: 0.125rem 0.625rem;
+        padding: 2px 10px;
         border-radius: var(--radius-full);
-        font-size: 0.6875rem;
-        font-weight: var(--oc-weight-medium);
+        font-size: 11px;
+        font-weight: 500;
         cursor: pointer;
         border: 1px solid transparent;
         background: none;
         text-transform: capitalize;
-        transition: all var(--oc-duration-fast) var(--oc-ease);
+        transition: all var(--duration-fast) var(--ease-out);
         line-height: 1.5;
         letter-spacing: -0.01em;
       }
@@ -654,70 +628,69 @@ export class KanbanView extends LitElement {
       }
 
       .priority-badge.none {
-        color: var(--muted-foreground);
-        font-size: 0.6875rem;
-        padding: 0.125rem 0.5rem;
+        color: var(--muted);
+        font-size: 11px;
+        padding: 2px 8px;
         border: 1px dashed var(--border);
       }
 
       .priority-badge.none:hover {
-        border-color: var(--oc-gray-300);
-        color: var(--foreground);
+        border-color: var(--border-strong);
+        color: var(--text);
       }
 
       .add-task-btn {
         width: 100%;
-        padding: 0.625rem;
+        padding: 10px;
         background: transparent;
         border: 2px dashed var(--border);
-        border-radius: var(--radius);
-        color: var(--muted-foreground);
+        border-radius: var(--radius-md);
+        color: var(--muted);
         cursor: pointer;
-        font-size: var(--oc-text-sm);
-        transition: all var(--oc-duration-fast) var(--oc-ease);
-        margin-top: 0.5rem;
+        font-size: 13px;
+        transition: all var(--duration-fast) var(--ease-out);
+        margin-top: 8px;
       }
 
       .add-task-btn:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-        background: hsla(221.2, 83.2%, 53.3%, 0.05);
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-subtle);
       }
 
       .add-task-form {
         background: var(--card);
-        border-radius: var(--radius);
-        padding: 0.75rem;
-        margin-top: 0.5rem;
+        border-radius: var(--radius-md);
+        padding: 12px;
+        margin-top: 8px;
         border: 1px solid var(--border);
       }
 
       .add-task-input {
         width: 100%;
         box-sizing: border-box;
-        background: var(--background);
+        background: var(--bg);
         border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 0.625rem 0.75rem;
-        color: var(--foreground);
-        font-size: var(--oc-text-sm);
-        font-family: var(--oc-font-sans);
+        border-radius: var(--radius-md);
+        padding: 10px 12px;
+        color: var(--text);
+        font-size: 14px;
+        font-family: inherit;
         outline: none;
-        margin-bottom: 0.625rem;
+        margin-bottom: 10px;
       }
 
       .add-task-input:focus {
-        border-color: var(--ring);
-        box-shadow: var(--focus-ring);
+        border-color: var(--accent);
       }
 
       .add-task-input::placeholder {
-        color: var(--muted-foreground);
+        color: var(--muted);
       }
 
       .add-task-actions {
         display: flex;
-        gap: 0.5rem;
+        gap: 8px;
         justify-content: flex-end;
       }
 
@@ -725,54 +698,60 @@ export class KanbanView extends LitElement {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.375rem;
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius);
+        gap: 6px;
+        padding: 9px 16px;
+        border-radius: var(--radius-md);
         border: 1px solid var(--border);
         cursor: pointer;
-        font-size: var(--oc-text-sm);
-        font-weight: var(--oc-weight-medium);
+        font-size: 13px;
+        font-weight: 500;
         letter-spacing: -0.01em;
-        height: 2.25rem;
         transition:
-          border-color var(--oc-duration-fast) var(--oc-ease),
-          background-color var(--oc-duration-fast) var(--oc-ease),
-          box-shadow var(--oc-duration-fast) var(--oc-ease);
-        background: var(--secondary);
-        color: var(--secondary-foreground);
+          border-color var(--duration-fast) var(--ease-out),
+          background var(--duration-fast) var(--ease-out),
+          box-shadow var(--duration-fast) var(--ease-out),
+          transform var(--duration-fast) var(--ease-out);
+        background: var(--bg-elevated);
+        color: var(--text);
       }
 
-      .btn:hover:not(:disabled) {
-        background: var(--accent);
-        border-color: var(--oc-gray-300);
+      .btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--border-strong);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
       }
 
-      .btn:focus {
-        box-shadow: var(--focus-ring);
+      .btn:active {
+        transform: translateY(0);
+        box-shadow: none;
       }
 
       .btn-primary {
-        background: var(--primary);
+        background: var(--accent);
         color: var(--primary-foreground);
-        border-color: var(--primary);
-        box-shadow: 0 1px 2px hsla(0, 0%, 0%, 0.05);
+        border-color: var(--accent);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
       }
 
-      .btn-primary:hover:not(:disabled) {
-        background: hsl(221.2 83.2% 48%);
-        border-color: hsl(221.2 83.2% 48%);
-        box-shadow: var(--oc-shadow-sm);
+      .btn-primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        box-shadow:
+          var(--shadow-md),
+          0 0 20px var(--accent-glow);
       }
 
       .btn-danger {
-        background: var(--destructive);
-        color: var(--destructive-foreground);
-        border-color: var(--destructive);
+        background: var(--danger-subtle);
+        color: var(--danger);
+        border-color: transparent;
       }
 
-      .btn-danger:hover:not(:disabled) {
-        background: hsl(0 84.2% 55%);
-        border-color: hsl(0 84.2% 55%);
+      .btn-danger:hover {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
       }
 
       .loading {
@@ -780,36 +759,36 @@ export class KanbanView extends LitElement {
         align-items: center;
         justify-content: center;
         height: 100%;
-        color: var(--muted-foreground);
-        gap: 0.625rem;
+        color: var(--muted);
+        gap: 10px;
       }
 
       .toast {
         position: fixed;
-        bottom: 1.25rem;
-        right: 1.25rem;
-        padding: 0.75rem 1.25rem;
-        border-radius: var(--radius);
-        font-size: var(--oc-text-sm);
-        box-shadow: var(--oc-shadow-lg);
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        box-shadow: var(--shadow-lg);
         z-index: 1000;
         animation: toast-in 0.2s ease-out;
       }
 
       .toast.error {
-        background: var(--destructive);
-        color: var(--destructive-foreground);
+        background: var(--danger);
+        color: white;
       }
 
       .toast.success {
-        background: var(--oc-success);
+        background: var(--ok);
         color: white;
       }
 
       @keyframes toast-in {
         from {
           opacity: 0;
-          transform: translateY(0.625rem);
+          transform: translateY(10px);
         }
         to {
           opacity: 1;
@@ -822,7 +801,6 @@ export class KanbanView extends LitElement {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -840,31 +818,31 @@ export class KanbanView extends LitElement {
       }
 
       .modal {
-        background: var(--card);
+        background: var(--panel);
         border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        max-width: 25rem;
+        padding: 24px;
+        max-width: 400px;
         width: 90%;
-        box-shadow: var(--oc-shadow-xl);
+        box-shadow: var(--shadow-lg);
         border: 1px solid var(--border);
       }
 
       .modal-title {
-        font-size: var(--oc-text-lg);
-        font-weight: var(--oc-weight-semibold);
-        color: var(--foreground);
-        margin-bottom: 0.75rem;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-strong);
+        margin-bottom: 12px;
       }
 
       .modal-body {
-        font-size: var(--oc-text-sm);
-        color: var(--muted-foreground);
-        margin-bottom: 1.25rem;
+        font-size: 14px;
+        color: var(--text);
+        margin-bottom: 20px;
       }
 
       .modal-actions {
         display: flex;
-        gap: 0.75rem;
+        gap: 12px;
         justify-content: flex-end;
       }
 
@@ -876,15 +854,15 @@ export class KanbanView extends LitElement {
         }
 
         .column {
-          min-width: calc(50% - 0.5rem);
+          min-width: calc(50% - 8px);
           max-width: none;
-          flex: 1 1 calc(50% - 0.5rem);
+          flex: 1 1 calc(50% - 8px);
         }
       }
 
       @media (max-width: 600px) {
         :host {
-          padding: 0.75rem;
+          padding: 12px;
         }
 
         .column {
@@ -893,7 +871,7 @@ export class KanbanView extends LitElement {
         }
 
         .board {
-          gap: 0.75rem;
+          gap: 12px;
         }
       }
     `,

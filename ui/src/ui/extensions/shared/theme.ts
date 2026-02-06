@@ -7,7 +7,7 @@
  *
  * Usage in any Lit component:
  *   import { ocTheme, ocBaseFormStyles, ocCardStyles, ... } from '../shared/theme.js';
- *   static styles = [ocTheme, ocBaseFormStyles, css(your component styles)];
+ *   static styles = [ocTheme, ocBaseFormStyles, yourComponentStyles];
  */
 
 import { css } from "lit";
