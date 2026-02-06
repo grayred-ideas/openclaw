@@ -176,6 +176,34 @@ export class KanbanView extends LitElement {
         color: var(--foreground);
       }
 
+      /* Filter dropdown custom styling */
+      .filter-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 6px 28px 6px 10px;
+        font-size: 13px;
+        color: var(--text);
+        height: 34px;
+        cursor: pointer;
+        outline: none;
+        transition: border-color var(--oc-duration-fast) var(--oc-ease);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+      }
+
+      .filter-select:hover {
+        border-color: var(--border-strong);
+      }
+
+      .filter-select:focus {
+        border-color: var(--accent);
+        box-shadow: var(--focus-ring);
+      }
+
       .saving-indicator {
         display: flex;
         align-items: center;
@@ -210,7 +238,7 @@ export class KanbanView extends LitElement {
         flex: 1;
         min-width: 260px;
         max-width: 320px;
-        background: var(--panel);
+        background: var(--oc-gray-50);
         border-radius: var(--radius-lg);
         display: flex;
         flex-direction: column;
@@ -243,12 +271,12 @@ export class KanbanView extends LitElement {
       }
 
       .column-count {
-        background: var(--bg-muted);
+        background: var(--oc-gray-100);
+        color: var(--oc-gray-600);
         padding: 2px 8px;
         border-radius: var(--radius-full);
         font-size: 12px;
         font-weight: 500;
-        color: var(--muted);
       }
 
       .column-body {
@@ -268,7 +296,7 @@ export class KanbanView extends LitElement {
       .empty-message {
         text-align: center;
         padding: 24px 16px;
-        color: var(--muted);
+        color: var(--oc-gray-400);
         font-size: 13px;
         font-style: italic;
       }
@@ -491,7 +519,7 @@ export class KanbanView extends LitElement {
         align-items: center;
         gap: 4px;
         font-size: 11px;
-        color: var(--muted);
+        color: var(--oc-gray-600);
       }
 
       .project-dot {
@@ -604,7 +632,7 @@ export class KanbanView extends LitElement {
 
       .task-time {
         font-size: 11px;
-        color: var(--muted);
+        color: var(--oc-gray-500);
       }
 
       .priority-badge {
@@ -645,7 +673,7 @@ export class KanbanView extends LitElement {
         background: transparent;
         border: 2px dashed var(--border);
         border-radius: var(--radius-md);
-        color: var(--muted);
+        color: var(--oc-gray-500);
         cursor: pointer;
         font-size: 13px;
         transition: all var(--duration-fast) var(--ease-out);
@@ -654,7 +682,7 @@ export class KanbanView extends LitElement {
 
       .add-task-btn:hover {
         border-color: var(--accent);
-        color: var(--accent);
+        color: var(--text);
         background: var(--accent-subtle);
       }
 
@@ -1328,8 +1356,21 @@ export class KanbanView extends LitElement {
         this.cyclePriority(task);
       }}>—</button>`;
     }
-    const color = PRIORITY_COLORS[p];
-    return html`<button class="priority-badge" style="background: ${color}20; color: ${color}; border-color: ${color}40;" title="Priority: ${p} (click to change)" @click=${(
+
+    let styles = "";
+    switch (p) {
+      case "high":
+        styles = "background: hsl(0 72% 51%); color: white;";
+        break;
+      case "medium":
+        styles = "background: hsl(38 92% 50%); color: hsl(38 92% 20%);";
+        break;
+      case "low":
+        styles = "background: hsl(221 83% 53%); color: white;";
+        break;
+    }
+
+    return html`<button class="priority-badge" style="${styles}" title="Priority: ${p} (click to change)" @click=${(
       e: Event,
     ) => {
       e.stopPropagation();

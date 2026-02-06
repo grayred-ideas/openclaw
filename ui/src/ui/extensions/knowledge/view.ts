@@ -59,6 +59,15 @@ export class KnowledgeView extends LitElement {
       flex-direction: column;
     }
 
+    .content-container {
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
     .header {
       display: flex;
       align-items: center;
@@ -80,7 +89,7 @@ export class KnowledgeView extends LitElement {
     .title svg {
       width: 24px;
       height: 24px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
     }
 
     .icon {
@@ -130,7 +139,7 @@ export class KnowledgeView extends LitElement {
       border-color: var(--accent);
     }
     .search-input::placeholder {
-      color: var(--muted);
+      color: var(--oc-gray-500);
     }
 
     .tabs {
@@ -144,7 +153,7 @@ export class KnowledgeView extends LitElement {
       padding: 8px 16px;
       font-size: 13px;
       font-weight: 500;
-      color: var(--muted);
+      color: var(--oc-gray-500);
       cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: all 0.15s;
@@ -172,7 +181,7 @@ export class KnowledgeView extends LitElement {
       border-radius: var(--radius-full);
       font-size: 11px;
       margin-left: 6px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
     }
 
     .content {
@@ -225,7 +234,7 @@ export class KnowledgeView extends LitElement {
     .btn-primary {
       background: var(--accent);
       border-color: var(--accent);
-      color: var(--primary-foreground);
+      color: white;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
     .btn-primary:hover {
@@ -254,7 +263,7 @@ export class KnowledgeView extends LitElement {
     .card-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
     }
 
     .card {
@@ -264,11 +273,10 @@ export class KnowledgeView extends LitElement {
       padding: 16px;
       transition:
         border-color var(--duration-fast) var(--ease-out),
-        box-shadow var(--duration-fast) var(--ease-out);
+        background var(--duration-fast) var(--ease-out);
     }
     .card:hover {
-      border-color: var(--border-strong);
-      box-shadow: var(--shadow-sm);
+      background: var(--bg-hover);
     }
 
     .card-header {
@@ -287,7 +295,7 @@ export class KnowledgeView extends LitElement {
 
     .card-meta {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
       margin-top: 4px;
       display: flex;
       gap: 8px;
@@ -319,7 +327,7 @@ export class KnowledgeView extends LitElement {
 
     .category-badge {
       background: var(--bg-muted);
-      color: var(--muted);
+      color: var(--oc-gray-500);
       padding: 2px 8px;
       border-radius: var(--radius-full);
       font-size: 11px;
@@ -339,7 +347,7 @@ export class KnowledgeView extends LitElement {
     .empty {
       text-align: center;
       padding: 48px 20px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
     }
     .empty-icon {
       font-size: 32px;
@@ -365,6 +373,7 @@ export class KnowledgeView extends LitElement {
 
     .quick-add-input {
       flex: 1;
+      max-width: 600px;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
@@ -377,7 +386,7 @@ export class KnowledgeView extends LitElement {
       border-color: var(--accent);
     }
     .quick-add-input::placeholder {
-      color: var(--muted);
+      color: var(--oc-gray-500);
     }
 
     /* Modal */
@@ -415,7 +424,7 @@ export class KnowledgeView extends LitElement {
     }
 
     .form-group label {
-      color: var(--muted);
+      color: var(--oc-gray-500);
       font-size: 13px;
       font-weight: 500;
     }
@@ -471,7 +480,7 @@ export class KnowledgeView extends LitElement {
 
     .saving-indicator {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -507,7 +516,7 @@ export class KnowledgeView extends LitElement {
       cursor: pointer;
       background: var(--panel);
       border: 1px solid var(--border);
-      color: var(--muted);
+      color: var(--oc-gray-500);
       transition: all 0.15s;
     }
     .filter-chip:hover {
@@ -935,46 +944,48 @@ export class KnowledgeView extends LitElement {
     const refsCount = this.data ? this.data.references.length : 0;
 
     return html`
-      <div class="header">
-        <div class="title"><span class="icon icon-lg">${icons.book}</span> Knowledge</div>
-        <div class="header-actions">
-          ${
-            this.saving
-              ? html`
-                  <div class="saving-indicator">
-                    <div class="spinner"></div>
-                    Saving
-                  </div>
-                `
-              : nothing
-          }
-          <input class="search-input" placeholder="Search..." .value=${this.search}
-            @input=${(e: InputEvent) => {
-              this.search = (e.target as HTMLInputElement).value;
-            }} />
+      <div class="content-container">
+        <div class="header">
+          <div class="title"><span class="icon icon-lg">${icons.book}</span> Knowledge</div>
+          <div class="header-actions">
+            ${
+              this.saving
+                ? html`
+                    <div class="saving-indicator">
+                      <div class="spinner"></div>
+                      Saving
+                    </div>
+                  `
+                : nothing
+            }
+            <input class="search-input" placeholder="Search..." .value=${this.search}
+              @input=${(e: InputEvent) => {
+                this.search = (e.target as HTMLInputElement).value;
+              }} />
+          </div>
         </div>
-      </div>
-      <div class="tabs">
-        <button class="tab ${this.activeTab === "inbox" ? "active" : ""}" @click=${() => {
-          this.activeTab = "inbox";
-        }}>
-          <span class="icon">${icons.inbox}</span> Inbox <span class="tab-badge">${inboxCount}</span>
-        </button>
-        <button class="tab ${this.activeTab === "notes" ? "active" : ""}" @click=${() => {
-          this.activeTab = "notes";
-        }}>
-          <span class="icon">${icons.fileText}</span> Notes <span class="tab-badge">${notesCount}</span>
-        </button>
-        <button class="tab ${this.activeTab === "references" ? "active" : ""}" @click=${() => {
-          this.activeTab = "references";
-        }}>
-          <span class="icon">${icons.link}</span> Links <span class="tab-badge">${refsCount}</span>
-        </button>
-      </div>
-      <div class="content">
-        ${this.activeTab === "inbox" ? this.renderInboxTab() : nothing}
-        ${this.activeTab === "notes" ? this.renderNotesTab() : nothing}
-        ${this.activeTab === "references" ? this.renderReferencesTab() : nothing}
+        <div class="tabs">
+          <button class="tab ${this.activeTab === "inbox" ? "active" : ""}" @click=${() => {
+            this.activeTab = "inbox";
+          }}>
+            <span class="icon">${icons.inbox}</span> Inbox <span class="tab-badge">${inboxCount}</span>
+          </button>
+          <button class="tab ${this.activeTab === "notes" ? "active" : ""}" @click=${() => {
+            this.activeTab = "notes";
+          }}>
+            <span class="icon">${icons.fileText}</span> Notes <span class="tab-badge">${notesCount}</span>
+          </button>
+          <button class="tab ${this.activeTab === "references" ? "active" : ""}" @click=${() => {
+            this.activeTab = "references";
+          }}>
+            <span class="icon">${icons.link}</span> Links <span class="tab-badge">${refsCount}</span>
+          </button>
+        </div>
+        <div class="content">
+          ${this.activeTab === "inbox" ? this.renderInboxTab() : nothing}
+          ${this.activeTab === "notes" ? this.renderNotesTab() : nothing}
+          ${this.activeTab === "references" ? this.renderReferencesTab() : nothing}
+        </div>
       </div>
       ${this.renderCreateModal()}
     `;

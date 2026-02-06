@@ -51,6 +51,36 @@ export const ocTheme = css`
     --radius-xl: 1rem;
     --radius-full: 9999px;
 
+    /* ── Short Aliases (used by extension views) ── */
+    --bg: var(--background);
+    --bg-elevated: var(--card);
+    --bg-hover: var(--oc-gray-100);
+    --bg-muted: var(--oc-gray-50);
+    --text: var(--foreground);
+    --text-strong: var(--foreground);
+    --border-strong: var(--oc-gray-300);
+    --panel: var(--card);
+    --panel-strong: var(--oc-gray-100);
+    --card-highlight: var(--oc-gray-50);
+    --accent-hover: var(--oc-red-hover);
+    --accent-subtle: var(--oc-red-subtle);
+    --accent-glow: var(--oc-red-subtle);
+    --danger: var(--oc-danger);
+    --danger-subtle: var(--oc-danger-light);
+    --error: var(--oc-danger);
+    --ok: var(--oc-success);
+    --ok-subtle: var(--oc-success-light);
+    --warn: var(--oc-warning);
+    --warn-subtle: var(--oc-warning-light);
+    --font-body: var(--oc-font-sans);
+    --font-mono: var(--oc-font-mono);
+    --duration-fast: var(--oc-duration-fast);
+    --ease-out: var(--oc-ease-out);
+    --shadow-sm: var(--oc-shadow-sm);
+    --shadow-md: var(--oc-shadow-md);
+    --shadow-lg: var(--oc-shadow-lg);
+    --shadow-xl: var(--oc-shadow-xl);
+
     /* ── Legacy Compatibility (warm palette) ── */
     --oc-red: hsl(0 84.2% 60.2%);
     --oc-red-hover: hsl(0 84.2% 55%);

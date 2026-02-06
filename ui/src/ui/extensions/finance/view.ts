@@ -297,7 +297,7 @@ export class FinanceView extends LitElement {
     }
 
     th {
-      color: var(--muted);
+      color: var(--oc-gray-500);
       font-weight: 500;
       font-size: 12px;
       text-transform: uppercase;
@@ -305,7 +305,15 @@ export class FinanceView extends LitElement {
     }
 
     tbody tr:hover {
-      background: var(--bg);
+      background: var(--bg-hover);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--bg-muted);
+    }
+
+    tbody tr:nth-child(even):hover {
+      background: var(--bg-hover);
     }
 
     tbody tr:last-child td {
@@ -564,7 +572,7 @@ export class FinanceView extends LitElement {
     }
 
     .stat-label {
-      color: var(--muted);
+      color: var(--oc-gray-500);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -580,7 +588,7 @@ export class FinanceView extends LitElement {
 
     .stat-sub {
       font-size: 11px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
       margin-top: 4px;
     }
 
@@ -1282,7 +1290,7 @@ export class FinanceView extends LitElement {
 
     .filter-label {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--oc-gray-500);
       font-weight: 500;
     }
 
@@ -1974,7 +1982,36 @@ export class FinanceView extends LitElement {
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">All Invoices (${invoices.length})</h3>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <!-- View mode toggle -->
+            <div style="display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+              <button 
+                class="btn btn-sm ${this.invoiceViewMode === "card" ? "btn-primary" : "btn-secondary"}" 
+                style="border: none; border-radius: 0; box-shadow: none; ${this.invoiceViewMode === "card" ? "" : "background: transparent; color: var(--muted-foreground);"}"
+                @click=${() => (this.invoiceViewMode = "card")}
+                title="Card view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                </svg>
+              </button>
+              <button 
+                class="btn btn-sm ${this.invoiceViewMode === "list" ? "btn-primary" : "btn-secondary"}" 
+                style="border: none; border-radius: 0; box-shadow: none; ${this.invoiceViewMode === "list" ? "" : "background: transparent; color: var(--muted-foreground);"}"
+                @click=${() => (this.invoiceViewMode = "list")}
+                title="List view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+              </button>
+            </div>
             <button class="btn btn-secondary btn-sm" @click=${() => {
               this.showInvoiceUpload = true;
             }}>
@@ -2020,9 +2057,32 @@ export class FinanceView extends LitElement {
                 </div>
               </div>
               
-              <div class="invoice-grid">
-                ${invoices.map((inv) => this.renderInvoiceCard(inv))}
-              </div>
+              ${
+                this.invoiceViewMode === "card"
+                  ? html`
+                  <div class="invoice-grid">
+                    ${invoices.map((inv) => this.renderInvoiceCard(inv))}
+                  </div>
+                `
+                  : html`
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Vendor</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Company</th>
+                        <th>Status</th>
+                        <th style="width: 80px;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${invoices.map((inv) => this.renderInvoiceRow(inv))}
+                    </tbody>
+                  </table>
+                `
+              }
             `
         }
       </div>
@@ -2030,6 +2090,7 @@ export class FinanceView extends LitElement {
   }
 
   @state() private expandedInvoices = new Set<string>();
+  @state() private invoiceViewMode: "card" | "list" = "card";
 
   private toggleInvoiceDetails(invoiceId: string) {
     if (this.expandedInvoices.has(invoiceId)) {
@@ -2038,6 +2099,44 @@ export class FinanceView extends LitElement {
       this.expandedInvoices.add(invoiceId);
     }
     this.requestUpdate();
+  }
+
+  private renderInvoiceRow(invoice: Invoice) {
+    return html`
+      <tr style="cursor: pointer;" @click=${() => this.toggleInvoiceDetails(invoice.id)}>
+        <td style="font-weight: 600;">${invoice.vendor}</td>
+        <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;">
+          ${formatCurrency(invoice.amount, invoice.currency)}
+        </td>
+        <td>${formatDate(invoice.date)}</td>
+        <td>
+          <span class="category-${invoice.category || "other"}">${invoice.category || "other"}</span>
+        </td>
+        <td>
+          <span class="company-dot ${invoice.company}"></span> ${invoice.company}
+        </td>
+        <td>
+          ${
+            invoice.statementLineId
+              ? html`<span class="status matched"><span class="icon">${icons.check}</span> Matched</span>`
+              : html`<span class="status unmatched"><span class="icon">${icons.clock}</span> Unmatched</span>`
+          }
+        </td>
+        <td @click=${(e: Event) => e.stopPropagation()}>
+          <div style="display: flex; gap: 4px;">
+            <button class="btn btn-secondary btn-sm" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" title="Delete">
+              <span class="icon">${icons.trash}</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
   }
 
   private renderInvoiceCard(invoice: Invoice) {
@@ -2081,10 +2180,13 @@ export class FinanceView extends LitElement {
             ${invoice.file.split("/").pop()}
           </a>
           <div class="invoice-actions" @click=${(e: Event) => e.stopPropagation()}>
-            <button class="btn btn-secondary btn-sm">
-              <span class="icon">${icons.edit2}</span>
+            <button class="btn btn-secondary btn-sm" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
             </button>
-            <button class="btn btn-secondary btn-sm">
+            <button class="btn btn-secondary btn-sm" title="Delete">
               <span class="icon">${icons.trash}</span>
             </button>
           </div>
