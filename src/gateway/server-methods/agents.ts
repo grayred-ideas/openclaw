@@ -26,6 +26,7 @@ import {
   validateAgentsFoldersListParams,
   validateAgentsFoldersCreateParams,
   validateAgentsFoldersDeleteParams,
+  validateAgentsFilesSearchParams,
   validateAgentsFilesUploadParams,
   validateAgentsFilesReadParams,
   validateAgentsFilesWriteParams,
@@ -460,6 +461,118 @@ export const agentsHandlers: GatewayRequestHandlers = {
   },
 
   // ============================================
+  // NEW: Search API
+  // ============================================
+
+  "agents.files.search": async ({ params, respond }) => {
+    if (!validateAgentsFilesSearchParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid agents.files.search params: ${formatValidationErrors(
+            validateAgentsFilesSearchParams.errors,
+          )}`,
+        ),
+      );
+      return;
+    }
+    const cfg = loadConfig();
+    const agentId = resolveAgentIdOrError(String(params.agentId ?? ""), cfg);
+    if (!agentId) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown agent id"));
+      return;
+    }
+    const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+    const query = String(params.query).toLowerCase();
+    const searchContent = params.searchContent !== false; // default true
+    const maxResults = typeof params.maxResults === "number" ? params.maxResults : 50;
+
+    const results: Array<{
+      path: string;
+      name: string;
+      type: "filename" | "content";
+      matches: Array<{ line: number; snippet: string }>;
+    }> = [];
+
+    // Recursive file walker
+    async function walkDir(dir: string, relPath: string): Promise<void> {
+      if (results.length >= maxResults) return;
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (results.length >= maxResults) return;
+          const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
+          const entryFullPath = path.join(dir, entry.name);
+
+          if (entry.isDirectory()) {
+            // Skip hidden dirs and node_modules
+            if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+            await walkDir(entryFullPath, entryRelPath);
+          } else if (entry.isFile()) {
+            const nameMatch = entry.name.toLowerCase().includes(query);
+            const contentMatches: Array<{ line: number; snippet: string }> = [];
+
+            // Search content for text files
+            if (searchContent) {
+              const ext = path.extname(entry.name).toLowerCase();
+              const textExts = [
+                ".md",
+                ".txt",
+                ".json",
+                ".yaml",
+                ".yml",
+                ".ts",
+                ".js",
+                ".html",
+                ".css",
+                ".csv",
+                ".xml",
+                ".toml",
+              ];
+              if (textExts.includes(ext) || ext === "") {
+                try {
+                  const stat = await fs.stat(entryFullPath);
+                  // Skip files > 1MB
+                  if (stat.size < 1024 * 1024) {
+                    const content = await fs.readFile(entryFullPath, "utf-8");
+                    const lines = content.split("\n");
+                    for (let i = 0; i < lines.length; i++) {
+                      if (lines[i].toLowerCase().includes(query)) {
+                        const snippet = lines[i].trim().substring(0, 200);
+                        contentMatches.push({ line: i + 1, snippet });
+                        if (contentMatches.length >= 5) break; // max 5 matches per file
+                      }
+                    }
+                  }
+                } catch {
+                  // Skip unreadable files
+                }
+              }
+            }
+
+            if (nameMatch || contentMatches.length > 0) {
+              results.push({
+                path: entryRelPath,
+                name: entry.name,
+                type: contentMatches.length > 0 ? "content" : "filename",
+                matches: contentMatches,
+              });
+            }
+          }
+        }
+      } catch {
+        // Skip unreadable directories
+      }
+    }
+
+    await walkDir(workspaceDir, "");
+
+    respond(true, { agentId, query: params.query, results, total: results.length }, undefined);
+  },
+
+  // ============================================
   // NEW: Folder APIs
   // ============================================
 
@@ -493,13 +606,42 @@ export const agentsHandlers: GatewayRequestHandlers = {
     }
 
     const baseDir = subPath ? path.join(workspaceDir, subPath) : workspaceDir;
-    const folders = await listDirectoriesRecursive(baseDir, "");
 
-    // Also list files in directories if requested
-    const includeFiles = params.includeFiles === true;
-    let files: Awaited<ReturnType<typeof listFilesRecursive>> = [];
-    if (includeFiles) {
-      files = await listFilesRecursive(baseDir, "");
+    // List ONE level only (not recursive) for folder navigation
+    const folders: Array<{ name: string; path: string; updatedAtMs: number }> = [];
+    const files: Array<{
+      path: string;
+      name: string;
+      size: number;
+      updatedAtMs: number;
+      mimeType?: string;
+    }> = [];
+
+    try {
+      const entries = await fs.readdir(baseDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const relativePath = subPath ? path.join(subPath, entry.name) : entry.name;
+        const entryFullPath = path.join(baseDir, entry.name);
+        if (entry.isDirectory()) {
+          const stat = await statDir(entryFullPath);
+          if (stat) {
+            folders.push({ name: entry.name, path: relativePath, updatedAtMs: stat.updatedAtMs });
+          }
+        } else if (entry.isFile()) {
+          const stat = await statFile(entryFullPath);
+          if (stat) {
+            files.push({
+              path: relativePath,
+              name: entry.name,
+              size: stat.size,
+              updatedAtMs: stat.updatedAtMs,
+              mimeType: guessMimeType(entry.name),
+            });
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or not readable
     }
 
     respond(
@@ -509,7 +651,7 @@ export const agentsHandlers: GatewayRequestHandlers = {
         workspace: workspaceDir,
         basePath: subPath || "/",
         folders,
-        ...(includeFiles ? { files } : {}),
+        files,
       },
       undefined,
     );

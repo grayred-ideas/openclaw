@@ -38,7 +38,7 @@ export async function loadChatHistory(state: ChatState) {
       "chat.history",
       {
         sessionKey: state.sessionKey,
-        limit: 200,
+        limit: 50,
       },
     );
     state.chatMessages = Array.isArray(res.messages) ? res.messages : [];

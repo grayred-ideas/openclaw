@@ -195,6 +195,20 @@ export const AgentsFoldersListResultSchema = Type.Object(
   { additionalProperties: false },
 );
 
+// ============================================
+// Search API
+// ============================================
+
+export const AgentsFilesSearchParamsSchema = Type.Object(
+  {
+    agentId: NonEmptyString,
+    query: NonEmptyString,
+    searchContent: Type.Optional(Type.Boolean()),
+    maxResults: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+  },
+  { additionalProperties: false },
+);
+
 export const AgentsFoldersCreateParamsSchema = Type.Object(
   {
     agentId: NonEmptyString,

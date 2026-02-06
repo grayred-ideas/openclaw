@@ -32,6 +32,7 @@ import {
   AgentsFoldersListParamsSchema,
   AgentsFoldersCreateParamsSchema,
   AgentsFoldersDeleteParamsSchema,
+  AgentsFilesSearchParamsSchema,
   AgentsFilesUploadParamsSchema,
   AgentsFilesReadParamsSchema,
   AgentsFilesWriteParamsSchema,
@@ -245,6 +246,7 @@ export const validateAgentsFilesSetParams = ajv.compile<AgentsFilesSetParams>(
 export const validateAgentsFoldersListParams = ajv.compile(AgentsFoldersListParamsSchema);
 export const validateAgentsFoldersCreateParams = ajv.compile(AgentsFoldersCreateParamsSchema);
 export const validateAgentsFoldersDeleteParams = ajv.compile(AgentsFoldersDeleteParamsSchema);
+export const validateAgentsFilesSearchParams = ajv.compile(AgentsFilesSearchParamsSchema);
 export const validateAgentsFilesUploadParams = ajv.compile(AgentsFilesUploadParamsSchema);
 export const validateAgentsFilesReadParams = ajv.compile(AgentsFilesReadParamsSchema);
 export const validateAgentsFilesWriteParams = ajv.compile(AgentsFilesWriteParamsSchema);

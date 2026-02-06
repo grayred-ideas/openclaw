@@ -4,13 +4,21 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { marked } from "marked";
 import type { GatewayBrowserClient } from "../../gateway.js";
+import { icons } from "../../icons.js";
 import {
-  listWorkspaceFiles,
+  listWorkspaceContents,
   getWorkspaceFile,
   saveWorkspaceFile,
   deleteWorkspaceFile,
   renameWorkspaceFile,
+  createWorkspaceFolder,
+  searchWorkspaceFiles,
+  joinPath,
+  getParentPath,
+  getPathBreadcrumbs,
   type WorkspaceFile,
+  type WorkspaceFolder,
+  type SearchResult,
 } from "./controller.js";
 
 @customElement("file-browser-view")
@@ -20,6 +28,12 @@ export class FileBrowserView extends LitElement {
 
   @state()
   private files: WorkspaceFile[] = [];
+
+  @state()
+  private folders: WorkspaceFolder[] = [];
+
+  @state()
+  private currentPath = "";
 
   @state()
   private selectedFile: WorkspaceFile | null = null;
@@ -55,6 +69,14 @@ export class FileBrowserView extends LitElement {
   private searchQuery = "";
 
   @state()
+  private searchResults: SearchResult[] | null = null;
+
+  @state()
+  private isSearching = false;
+
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  @state()
   private sortBy: "name" | "date" | "size" = "name";
 
   @state()
@@ -67,29 +89,74 @@ export class FileBrowserView extends LitElement {
   private isCreating = false;
 
   @state()
+  private isCreatingFolder = false;
+
+  @state()
   private isRenaming = false;
 
   @state()
   private newFileName = "";
 
   @state()
+  private newFolderName = "";
+
+  @state()
   private isDeleting = false;
+
+  @state()
+  private showNewDropdown = false;
+
+  @state()
+  private showMoreDropdown = false;
+
+  @state()
+  private contextMenu: {
+    x: number;
+    y: number;
+    items: Array<{ label: string; action: () => void; icon?: any; danger?: boolean }>;
+  } | null = null;
 
   private get isDirty(): boolean {
     return this.isEditing && this.editedContent !== this.fileContent;
   }
 
-  private get filteredAndSortedFiles(): WorkspaceFile[] {
-    let result = [...this.files];
+  private get filteredAndSortedItems(): (
+    | WorkspaceFile
+    | (WorkspaceFolder & { isFolder: boolean })
+  )[] {
+    const query = this.searchQuery.trim().toLowerCase();
 
-    // Filter by search query
-    if (this.searchQuery.trim()) {
-      const query = this.searchQuery.toLowerCase();
-      result = result.filter((f) => f.name.toLowerCase().includes(query));
+    // Filter folders
+    let filteredFolders = [...this.folders];
+    if (query) {
+      filteredFolders = filteredFolders.filter((f) => f.name.toLowerCase().includes(query));
     }
 
-    // Sort
-    result.sort((a, b) => {
+    // Filter files
+    let filteredFiles = [...this.files];
+    if (query) {
+      filteredFiles = filteredFiles.filter((f) => f.name.toLowerCase().includes(query));
+    }
+
+    // Sort folders
+    filteredFolders.sort((a, b) => {
+      let cmp = 0;
+      switch (this.sortBy) {
+        case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "date":
+          cmp = (a.updatedAtMs ?? 0) - (b.updatedAtMs ?? 0);
+          break;
+        case "size":
+          cmp = 0; // folders don't have size
+          break;
+      }
+      return this.sortOrder === "asc" ? cmp : -cmp;
+    });
+
+    // Sort files
+    filteredFiles.sort((a, b) => {
       let cmp = 0;
       switch (this.sortBy) {
         case "name":
@@ -105,7 +172,11 @@ export class FileBrowserView extends LitElement {
       return this.sortOrder === "asc" ? cmp : -cmp;
     });
 
-    return result;
+    // Combine: folders first, then files
+    return [
+      ...filteredFolders.map((f) => ({ ...f, isFolder: true })),
+      ...filteredFiles.map((f) => ({ ...f, isFolder: false })),
+    ];
   }
 
   static styles = css`
@@ -118,7 +189,7 @@ export class FileBrowserView extends LitElement {
     }
 
     .sidebar {
-      width: 280px;
+      width: 260px;
       min-width: 200px;
       border-right: 1px solid var(--border);
       display: flex;
@@ -130,16 +201,20 @@ export class FileBrowserView extends LitElement {
     }
 
     .sidebar.collapsed {
-      width: 48px;
-      min-width: 48px;
+      width: 40px;
+      min-width: 40px;
+      overflow: hidden;
     }
 
-    .sidebar.collapsed .sidebar-header-text,
-    .sidebar.collapsed .sidebar-toolbar,
+    .sidebar.collapsed .sidebar-title,
     .sidebar.collapsed .file-list,
-    .sidebar.collapsed .search-bar,
-    .sidebar.collapsed .sort-bar {
+    .sidebar.collapsed .search-bar {
       display: none;
+    }
+
+    .sidebar.collapsed .sidebar-header {
+      justify-content: center;
+      padding: 12px 8px;
     }
 
     .sidebar-header {
@@ -149,19 +224,26 @@ export class FileBrowserView extends LitElement {
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
       color: var(--text-strong);
     }
 
-    .sidebar-header svg {
+    .sidebar-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-title svg {
       width: 18px;
       height: 18px;
       color: var(--muted);
       flex-shrink: 0;
-    }
-
-    .sidebar-header-text {
-      flex: 1;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .sidebar-toggle {
@@ -176,45 +258,23 @@ export class FileBrowserView extends LitElement {
       justify-content: center;
     }
 
+    .sidebar-toggle svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .sidebar-toggle:hover {
       background: var(--bg-hover);
       color: var(--text);
     }
 
-    .sidebar-toolbar {
-      padding: 8px 12px;
-      display: flex;
-      gap: 6px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .toolbar-btn {
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-      background: var(--card);
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: all var(--duration-fast) var(--ease-out);
-    }
-
-    .toolbar-btn:hover {
-      background: var(--bg-hover);
-      border-color: var(--border-strong);
-    }
-
-    .toolbar-btn svg {
-      width: 14px;
-      height: 14px;
-    }
-
     .search-bar {
-      padding: 8px 12px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
     }
 
@@ -222,7 +282,7 @@ export class FileBrowserView extends LitElement {
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       background: var(--bg);
@@ -240,53 +300,24 @@ export class FileBrowserView extends LitElement {
       color: var(--muted);
     }
 
-    .sort-bar {
-      padding: 6px 12px;
-      display: flex;
-      gap: 4px;
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-    }
-
-    .sort-btn {
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      border: none;
-      cursor: pointer;
-      background: transparent;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 500;
-      transition: all var(--duration-fast) var(--ease-out);
-    }
-
-    .sort-btn:hover {
-      background: var(--bg-hover);
-      color: var(--text);
-    }
-
-    .sort-btn.active {
-      background: var(--accent-subtle);
-      color: var(--accent);
-    }
-
     .file-list {
       flex: 1;
       overflow-y: auto;
-      padding: 4px 0;
+      padding: 8px 0;
     }
 
     .file-item {
-      padding: 8px 12px;
+      padding: 10px 16px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-size: 13px;
-      transition: background var(--duration-fast) var(--ease-out);
+      transition: all var(--duration-fast) var(--ease-out);
       color: var(--text);
       margin: 2px 8px;
       border-radius: var(--radius-md);
+      border-left: 3px solid transparent;
     }
 
     .file-item:hover {
@@ -295,8 +326,7 @@ export class FileBrowserView extends LitElement {
 
     .file-item.selected {
       background: var(--accent-subtle);
-      border-left: 3px solid var(--accent);
-      padding-left: 9px;
+      border-left-color: var(--accent);
     }
 
     .file-item.missing {
@@ -304,27 +334,80 @@ export class FileBrowserView extends LitElement {
       font-style: italic;
     }
 
+    .file-item.folder-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .folder-icon {
+      font-size: 16px;
+    }
+
     .file-icon {
+      display: inline-flex;
       width: 16px;
       height: 16px;
       color: var(--muted);
       flex-shrink: 0;
     }
 
-    .file-icon-md {
+    .search-results-header {
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-result-item .file-info {
+      gap: 4px;
+    }
+
+    .search-result-path {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .search-match-preview {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .search-match-line {
+      display: flex;
+      gap: 6px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .search-line-num {
       color: var(--accent);
+      font-family: var(--mono);
+      font-size: 10px;
+      flex-shrink: 0;
     }
 
-    .file-icon-json {
-      color: #f59e0b;
+    .search-snippet {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .file-icon-yaml {
-      color: #8b5cf6;
+    .file-icon svg {
+      width: 100%;
+      height: 100%;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .file-icon-code {
-      color: #3b82f6;
+      color: var(--accent);
     }
 
     .file-info {
@@ -353,53 +436,64 @@ export class FileBrowserView extends LitElement {
       color: var(--muted);
     }
 
-    .create-file-form {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .inline-form {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      max-width: 400px;
+      margin: 40px auto 0;
+      box-shadow: var(--shadow-md);
     }
 
-    .create-file-form input {
+    .inline-form h3 {
+      margin: 0 0 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-strong);
+    }
+
+    .inline-form-input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 12px 16px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       background: var(--bg);
       color: var(--text);
-      font-size: 13px;
+      font-size: 14px;
       outline: none;
+      margin-bottom: 16px;
+      transition: border-color var(--duration-fast) var(--ease-out);
     }
 
-    .create-file-form input:focus {
+    .inline-form-input:focus {
       border-color: var(--accent);
     }
 
-    .create-file-actions {
+    .inline-form-actions {
       display: flex;
-      gap: 6px;
+      gap: 12px;
+      justify-content: flex-end;
     }
 
-    .create-file-actions button {
-      flex: 1;
-      padding: 6px;
+    .inline-form-actions button {
+      padding: 10px 20px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 500;
       transition: all var(--duration-fast) var(--ease-out);
     }
 
-    .create-file-actions .btn-create {
+    .inline-form-actions .btn-create {
       background: var(--accent);
-      color: var(--accent-foreground);
+      color: var(--primary-foreground);
       border-color: var(--accent);
     }
 
-    .create-file-actions .btn-cancel {
-      background: var(--card);
+    .inline-form-actions .btn-cancel {
+      background: var(--bg-elevated);
       color: var(--text);
     }
 
@@ -411,12 +505,51 @@ export class FileBrowserView extends LitElement {
     }
 
     .content-header {
-      padding: 12px 16px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: var(--panel);
+      min-height: 56px;
+      gap: 16px;
+    }
+
+    .content-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .breadcrumb {
+      color: var(--muted);
+      cursor: pointer;
+      transition: color var(--duration-fast) var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .breadcrumb:hover {
+      color: var(--text);
+    }
+
+    .breadcrumb.active {
+      color: var(--text-strong);
+      cursor: default;
+    }
+
+    .breadcrumb-separator {
+      color: var(--muted);
+      user-select: none;
+    }
+
+    .content-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .content-title {
@@ -428,21 +561,36 @@ export class FileBrowserView extends LitElement {
       color: var(--text-strong);
     }
 
-    .content-actions {
-      display: flex;
-      gap: 8px;
-    }
-
     .btn {
-      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 14px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      transition: all var(--duration-fast) var(--ease-out);
-      background: var(--card);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      transition:
+        border-color var(--duration-fast) var(--ease-out),
+        background var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out);
+      background: var(--bg-elevated);
       color: var(--text);
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .btn:hover {
@@ -452,7 +600,7 @@ export class FileBrowserView extends LitElement {
 
     .btn-primary {
       background: var(--accent);
-      color: var(--accent-foreground);
+      color: var(--primary-foreground);
       border-color: var(--accent);
     }
 
@@ -467,14 +615,15 @@ export class FileBrowserView extends LitElement {
     }
 
     .btn-danger {
-      background: var(--danger, #ef4444);
-      color: white;
-      border-color: var(--danger, #ef4444);
+      background: var(--danger-subtle);
+      color: var(--danger);
+      border-color: transparent;
     }
 
     .btn-danger:hover {
-      background: var(--danger-hover, #dc2626);
-      border-color: var(--danger-hover, #dc2626);
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
     }
 
     .btn-icon {
@@ -487,6 +636,115 @@ export class FileBrowserView extends LitElement {
     .btn-icon svg {
       width: 16px;
       height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .dropdown-content {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 100;
+      min-width: 160px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 8px 0;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .dropdown-content.right-aligned {
+      left: auto;
+      right: 0;
+    }
+
+    .dropdown-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background var(--duration-fast) var(--ease-out);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dropdown-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .dropdown-item.danger {
+      color: var(--danger);
+    }
+
+    .dropdown-item.danger:hover {
+      background: var(--danger-subtle);
+    }
+
+    .dropdown-item svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .context-menu {
+      position: fixed;
+      z-index: 1000;
+      min-width: 160px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 8px 0;
+      overflow: hidden;
+    }
+
+    .context-menu-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background var(--duration-fast) var(--ease-out);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .context-menu-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .context-menu-item.danger {
+      color: var(--danger);
+    }
+
+    .context-menu-item.danger:hover {
+      background: var(--danger-subtle);
+    }
+
+    .context-menu-item svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .rename-form {
@@ -741,17 +999,17 @@ export class FileBrowserView extends LitElement {
     }
 
     .save-success {
-      background: var(--success-subtle, rgba(34, 197, 94, 0.1));
-      color: var(--success, #22c55e);
+      background: var(--ok-subtle);
+      color: var(--ok);
     }
 
     .save-error {
-      background: var(--danger-subtle, rgba(239, 68, 68, 0.1));
-      color: var(--danger, #ef4444);
+      background: var(--danger-subtle);
+      color: var(--danger);
     }
 
     .dirty-indicator {
-      color: var(--warning, #f59e0b);
+      color: var(--warn);
       font-weight: bold;
       margin-left: 4px;
     }
@@ -808,6 +1066,11 @@ export class FileBrowserView extends LitElement {
     .mobile-menu-btn svg {
       width: 20px;
       height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
   `;
 
@@ -817,11 +1080,13 @@ export class FileBrowserView extends LitElement {
     super.connectedCallback();
     this.loadFiles();
     document.addEventListener("keydown", this.boundHandleKeyDown);
+    document.addEventListener("click", this.handleDocumentClick.bind(this));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this.boundHandleKeyDown);
+    document.removeEventListener("click", this.handleDocumentClick.bind(this));
   }
 
   private handleKeyDown(e: KeyboardEvent) {
@@ -836,6 +1101,23 @@ export class FileBrowserView extends LitElement {
     if (e.key === "Escape" && this.isEditing) {
       e.preventDefault();
       this.cancelEdit();
+    }
+    // Escape to close dropdowns and context menus
+    if (e.key === "Escape") {
+      this.closeDropdowns();
+      this.closeContextMenu();
+    }
+  }
+
+  private handleDocumentClick(e: Event) {
+    const target = e.target as Element;
+    // Close dropdowns if clicking outside
+    if (!target.closest(".dropdown")) {
+      this.closeDropdowns();
+    }
+    // Close context menu if clicking outside
+    if (!target.closest(".context-menu")) {
+      this.closeContextMenu();
     }
   }
 
@@ -856,19 +1138,20 @@ export class FileBrowserView extends LitElement {
     this.loading = true;
     this.error = null;
 
-    const result = await listWorkspaceFiles(this.gateway);
+    const result = await listWorkspaceContents(this.gateway, this.currentPath);
     if (result) {
-      this.files = result.files.filter((f) => !f.missing);
+      this.folders = result.folders || [];
+      this.files = (result.files || []).filter((f) => !f.missing);
       this.loading = false;
     } else {
-      this.error = "Failed to load workspace files";
+      this.error = "Failed to load workspace contents";
       this.loading = false;
     }
   }
 
   private async selectFile(file: WorkspaceFile) {
     if (!this.gateway || file.missing) return;
-    if (this.selectedFile?.name === file.name) return;
+    if (this.selectedFile?.path === file.path) return;
 
     // Check for unsaved changes
     if (this.isDirty) {
@@ -881,13 +1164,33 @@ export class FileBrowserView extends LitElement {
     this.loadingContent = true;
     this.saveError = null;
 
-    const result = await getWorkspaceFile(this.gateway, file.name);
+    const result = await getWorkspaceFile(this.gateway, file.path);
     this.loadingContent = false;
 
     if (result?.file.content !== undefined) {
       this.fileContent = result.file.content;
       this.editedContent = result.file.content;
     }
+  }
+
+  private async navigateToFolder(folderPath: string) {
+    // Check for unsaved changes
+    if (this.isDirty) {
+      const discard = window.confirm("You have unsaved changes. Discard them and switch folders?");
+      if (!discard) return;
+    }
+
+    this.currentPath = folderPath;
+    this.selectedFile = null;
+    this.fileContent = "";
+    this.editedContent = "";
+    this.isEditing = false;
+    await this.loadFiles();
+  }
+
+  private async navigateToParent() {
+    const parentPath = getParentPath(this.currentPath);
+    await this.navigateToFolder(parentPath);
   }
 
   private toggleEdit() {
@@ -911,7 +1214,7 @@ export class FileBrowserView extends LitElement {
 
     const success = await saveWorkspaceFile(
       this.gateway,
-      this.selectedFile.name,
+      this.selectedFile.path,
       this.editedContent,
     );
 
@@ -974,20 +1277,37 @@ export class FileBrowserView extends LitElement {
     if (!this.gateway || !this.newFileName.trim()) return;
 
     const fileName = this.newFileName.trim();
-    const success = await saveWorkspaceFile(this.gateway, fileName, "");
+    const filePath = joinPath(this.currentPath, fileName);
+    const success = await saveWorkspaceFile(this.gateway, filePath, "");
 
     if (success) {
       this.isCreating = false;
       this.newFileName = "";
       await this.loadFiles();
       // Select the new file
-      const newFile = this.files.find((f) => f.name === fileName);
+      const newFile = this.files.find((f) => f.path === filePath);
       if (newFile) {
         await this.selectFile(newFile);
         this.toggleEdit(); // Enter edit mode
       }
     } else {
       this.saveError = "Failed to create file";
+    }
+  }
+
+  private async createFolder() {
+    if (!this.gateway || !this.newFolderName.trim()) return;
+
+    const folderName = this.newFolderName.trim();
+    const folderPath = joinPath(this.currentPath, folderName);
+    const success = await createWorkspaceFolder(this.gateway, folderPath);
+
+    if (success) {
+      this.isCreatingFolder = false;
+      this.newFolderName = "";
+      await this.loadFiles();
+    } else {
+      this.saveError = "Failed to create folder";
     }
   }
 
@@ -1036,7 +1356,7 @@ export class FileBrowserView extends LitElement {
     if (!confirmed) return;
 
     this.isDeleting = true;
-    const success = await deleteWorkspaceFile(this.gateway, this.selectedFile.name);
+    const success = await deleteWorkspaceFile(this.gateway, this.selectedFile.path);
     this.isDeleting = false;
 
     if (success) {
@@ -1053,14 +1373,15 @@ export class FileBrowserView extends LitElement {
     if (!this.gateway || !this.selectedFile || !this.newFileName.trim()) return;
 
     const newName = this.newFileName.trim();
-    const success = await renameWorkspaceFile(this.gateway, this.selectedFile.name, newName);
+    const newPath = joinPath(this.currentPath, newName);
+    const success = await renameWorkspaceFile(this.gateway, this.selectedFile.path, newPath);
 
     if (success) {
       this.isRenaming = false;
       this.newFileName = "";
       await this.loadFiles();
-      // Re-select with new name
-      const renamedFile = this.files.find((f) => f.name === newName);
+      // Re-select with new path
+      const renamedFile = this.files.find((f) => f.path === newPath);
       if (renamedFile) {
         this.selectedFile = renamedFile;
       }
@@ -1080,6 +1401,11 @@ export class FileBrowserView extends LitElement {
     this.newFileName = "";
   }
 
+  private cancelCreateFolder() {
+    this.isCreatingFolder = false;
+    this.newFolderName = "";
+  }
+
   private cancelRename() {
     this.isRenaming = false;
     this.newFileName = "";
@@ -1087,6 +1413,60 @@ export class FileBrowserView extends LitElement {
 
   private handleSearchInput(e: Event) {
     this.searchQuery = (e.target as HTMLInputElement).value;
+
+    // Clear previous debounce
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+
+    const query = this.searchQuery.trim();
+    if (query.length < 2) {
+      // Clear search results, show normal file list
+      this.searchResults = null;
+      this.isSearching = false;
+      return;
+    }
+
+    // Debounce: wait 300ms after typing stops
+    this.isSearching = true;
+    this.searchDebounceTimer = setTimeout(async () => {
+      if (!this.gateway) return;
+      const response = await searchWorkspaceFiles(this.gateway, query);
+      if (response) {
+        this.searchResults = response.results;
+      }
+      this.isSearching = false;
+    }, 300);
+  }
+
+  private async openSearchResult(result: SearchResult) {
+    // Navigate to the file's folder and select it
+    const lastSlash = result.path.lastIndexOf("/");
+    const folderPath = lastSlash > 0 ? result.path.substring(0, lastSlash) : "";
+
+    if (folderPath !== this.currentPath) {
+      this.currentPath = folderPath;
+      await this.loadFiles();
+    }
+
+    // Find and select the file
+    const file = this.files.find((f) => f.path === result.path);
+    if (file) {
+      await this.selectFile(file);
+    } else {
+      // File might not be in the listing yet, load it directly
+      if (!this.gateway) return;
+      const fileResult = await getWorkspaceFile(this.gateway, result.path);
+      if (fileResult?.file) {
+        this.selectedFile = fileResult.file;
+        this.fileContent = fileResult.file.content ?? "";
+        this.editedContent = this.fileContent;
+      }
+    }
+
+    // Clear search
+    this.searchQuery = "";
+    this.searchResults = null;
   }
 
   private toggleSort(by: "name" | "date" | "size") {
@@ -1110,6 +1490,123 @@ export class FileBrowserView extends LitElement {
       textarea.selectionStart = textarea.selectionEnd = start + 2;
       this.editedContent = textarea.value;
     }
+  }
+
+  private toggleNewDropdown() {
+    this.showNewDropdown = !this.showNewDropdown;
+    this.showMoreDropdown = false;
+  }
+
+  private toggleMoreDropdown() {
+    this.showMoreDropdown = !this.showMoreDropdown;
+    this.showNewDropdown = false;
+  }
+
+  private closeDropdowns() {
+    this.showNewDropdown = false;
+    this.showMoreDropdown = false;
+  }
+
+  private showContextMenu(
+    e: MouseEvent,
+    items: Array<{ label: string; action: () => void; icon?: any; danger?: boolean }>,
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.contextMenu = {
+      x: e.clientX,
+      y: e.clientY,
+      items,
+    };
+  }
+
+  private closeContextMenu() {
+    this.contextMenu = null;
+  }
+
+  private handleFileContextMenu(e: MouseEvent, file: WorkspaceFile) {
+    this.showContextMenu(e, [
+      {
+        label: "Rename",
+        action: () => {
+          this.selectedFile = file;
+          this.startRename();
+          this.closeContextMenu();
+        },
+        icon: icons.edit,
+      },
+      {
+        label: "Delete",
+        action: () => {
+          this.selectedFile = file;
+          this.deleteFile();
+          this.closeContextMenu();
+        },
+        icon: icons.trash,
+        danger: true,
+      },
+    ]);
+  }
+
+  private handleFolderContextMenu(e: MouseEvent, folder: WorkspaceFolder) {
+    this.showContextMenu(e, [
+      {
+        label: "New File Here",
+        action: () => {
+          this.navigateToFolder(folder.path);
+          this.isCreating = true;
+          this.closeContextMenu();
+        },
+        icon: icons.fileText,
+      },
+      {
+        label: "New Folder Here",
+        action: () => {
+          this.navigateToFolder(folder.path);
+          this.isCreatingFolder = true;
+          this.closeContextMenu();
+        },
+        icon: icons.folder,
+      },
+      {
+        label: "Delete Folder",
+        action: () => {
+          // Note: We'd need to implement folder deletion in the controller
+          this.closeContextMenu();
+        },
+        icon: icons.trash,
+        danger: true,
+      },
+    ]);
+  }
+
+  private handleEmptySpaceContextMenu(e: MouseEvent) {
+    this.showContextMenu(e, [
+      {
+        label: "New File",
+        action: () => {
+          this.isCreating = true;
+          this.closeContextMenu();
+        },
+        icon: icons.fileText,
+      },
+      {
+        label: "New Folder",
+        action: () => {
+          this.isCreatingFolder = true;
+          this.closeContextMenu();
+        },
+        icon: icons.folder,
+      },
+      {
+        label: "Upload",
+        action: () => {
+          this.triggerUpload();
+          this.closeContextMenu();
+        },
+        icon: icons.upload,
+      },
+    ]);
   }
 
   private renderMarkdown(content: string): string {
@@ -1191,170 +1688,51 @@ export class FileBrowserView extends LitElement {
   private renderFileIcon(fileName?: string) {
     const ext = fileName ? this.getFileExtension(fileName) : "";
 
-    // Markdown
-    if (ext === "md") {
-      return html`
-        <svg
-          class="file-icon file-icon-md"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <path d="M8 13h2l1.5 2 1.5-2h2"></path>
-        </svg>
-      `;
-    }
-
-    // JSON
-    if (ext === "json") {
-      return html`
-        <svg
-          class="file-icon file-icon-json"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <path d="M8 12a2 2 0 0 0 0 4"></path>
-          <path d="M16 12a2 2 0 0 1 0 4"></path>
-        </svg>
-      `;
-    }
-
-    // YAML
-    if (ext === "yaml" || ext === "yml") {
-      return html`
-        <svg
-          class="file-icon file-icon-yaml"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <path d="M8 13l2 2v3"></path>
-          <path d="M16 13l-2 2"></path>
-        </svg>
-      `;
-    }
-
-    // TypeScript/JavaScript
     if (ext === "ts" || ext === "js" || ext === "tsx" || ext === "jsx") {
-      return html`
-        <svg
-          class="file-icon file-icon-code"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <polyline points="8 13 10 15 8 17"></polyline>
-          <line x1="12" y1="17" x2="16" y2="17"></line>
-        </svg>
-      `;
+      return html`<span class="file-icon file-icon-code">${icons.fileCode}</span>`;
     }
 
-    // Default file icon
-    return html`
-      <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <polyline points="14 2 14 8 20 8"></polyline>
-        <line x1="16" y1="13" x2="8" y2="13"></line>
-        <line x1="16" y1="17" x2="8" y2="17"></line>
-      </svg>
-    `;
+    // Default file icon for all types
+    return html`<span class="file-icon">${icons.fileText}</span>`;
   }
 
   private renderFolderIcon() {
-    return html`
-      <svg
-        style="width: 18px; height: 18px"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-      </svg>
-    `;
+    return icons.folder;
   }
 
   private renderPlusIcon() {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-    `;
+    return icons.plus;
   }
 
   private renderRefreshIcon() {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="23 4 23 10 17 10"></polyline>
-        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-      </svg>
-    `;
+    return icons.refreshCw;
   }
 
   private renderMenuIcon() {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    `;
+    return icons.menu;
   }
 
   private renderChevronIcon(direction: "left" | "right") {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-        ${
-          direction === "left"
-            ? html`
-                <polyline points="15 18 9 12 15 6"></polyline>
-              `
-            : html`
-                <polyline points="9 18 15 12 9 6"></polyline>
-              `
-        }
-      </svg>
-    `;
+    return direction === "left" ? icons.chevronLeft : icons.chevronRight;
   }
 
   private renderTrashIcon() {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-      </svg>
-    `;
+    return icons.trash;
   }
 
   private renderEditIcon() {
-    return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-      </svg>
-    `;
+    return icons.edit;
   }
 
   render() {
     return html`
+      <!-- Sidebar (slim, navigation only) -->
       <div class="sidebar ${this.sidebarCollapsed ? "collapsed" : ""}">
         <div class="sidebar-header">
-          ${this.renderFolderIcon()}
-          <span class="sidebar-header-text">Workspace Files</span>
+          <div class="sidebar-title">
+            ${this.renderFolderIcon()}
+            <span class="sidebar-header-text">Files</span>
+          </div>
           <button
             class="sidebar-toggle"
             @click=${() => (this.sidebarCollapsed = !this.sidebarCollapsed)}
@@ -1364,222 +1742,429 @@ export class FileBrowserView extends LitElement {
           </button>
         </div>
 
-        <div class="sidebar-toolbar">
-          <button class="toolbar-btn" @click=${() => (this.isCreating = true)} title="New file">
-            ${this.renderPlusIcon()} New
-          </button>
-          <button class="toolbar-btn" @click=${this.triggerUpload} title="Upload file">
-            ⬆ Upload
-          </button>
-          <button class="toolbar-btn" @click=${() => this.loadFiles()} title="Refresh">
-            ${this.renderRefreshIcon()}
-          </button>
-          <input
-            type="file"
-            multiple
-            style="display:none"
-            @change=${this.handleFileUpload}
-            id="file-upload-input"
-          />
-        </div>
-
+        <!-- Search bar -->
         <div class="search-bar">
           <input
             type="text"
             class="search-input"
-            placeholder="Search files..."
+            placeholder="🔍 Search..."
             .value=${this.searchQuery}
             @input=${this.handleSearchInput}
           />
         </div>
 
-        <div class="sort-bar">
-          <button
-            class="sort-btn ${this.sortBy === "name" ? "active" : ""}"
-            @click=${() => this.toggleSort("name")}
-          >
-            Name ${this.sortBy === "name" ? (this.sortOrder === "asc" ? "↑" : "↓") : ""}
-          </button>
-          <button
-            class="sort-btn ${this.sortBy === "date" ? "active" : ""}"
-            @click=${() => this.toggleSort("date")}
-          >
-            Date ${this.sortBy === "date" ? (this.sortOrder === "asc" ? "↑" : "↓") : ""}
-          </button>
-          <button
-            class="sort-btn ${this.sortBy === "size" ? "active" : ""}"
-            @click=${() => this.toggleSort("size")}
-          >
-            Size ${this.sortBy === "size" ? (this.sortOrder === "asc" ? "↑" : "↓") : ""}
-          </button>
-        </div>
-
-        ${
-          this.isCreating
-            ? html`
-            <div class="create-file-form">
-              <input
-                type="text"
-                placeholder="filename.md"
-                .value=${this.newFileName}
-                @input=${(e: Event) => (this.newFileName = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === "Enter") this.createFile();
-                  if (e.key === "Escape") this.cancelCreate();
-                }}
-              />
-              <div class="create-file-actions">
-                <button class="btn-cancel" @click=${this.cancelCreate}>Cancel</button>
-                <button class="btn-create" @click=${this.createFile}>Create</button>
-              </div>
-            </div>
-          `
-            : ""
-        }
-
-        <div class="file-list">
+        <!-- File listing -->
+        <div 
+          class="file-list"
+          @contextmenu=${(e: MouseEvent) => this.handleEmptySpaceContextMenu(e)}
+        >
           ${
-            this.loading
+            this.isSearching
               ? html`
-                  <div class="loading">Loading...</div>
+                  <div class="loading">Searching...</div>
                 `
-              : this.error
-                ? html`<div class="error-state">${this.error}</div>`
-                : this.filteredAndSortedFiles.length === 0
-                  ? html`<div class="empty-state">${this.searchQuery ? "No matching files" : "No files found"}</div>`
-                  : this.filteredAndSortedFiles.map(
-                      (file) => html`
-                      <div
-                        class="file-item ${file.missing ? "missing" : ""} ${this.selectedFile?.name === file.name ? "selected" : ""}"
-                        @click=${() => this.selectFile(file)}
-                        title="${file.name}"
+              : this.searchResults !== null
+                ? html`
+                  <div class="search-results-header">
+                    ${this.searchResults.length} result${this.searchResults.length !== 1 ? "s" : ""}
+                  </div>
+                  ${
+                    this.searchResults.length === 0
+                      ? html`
+                          <div class="empty-state">No matches found</div>
+                        `
+                      : this.searchResults.map(
+                          (result) => html`
+                      <div 
+                        class="file-item search-result-item"
+                        @click=${() => this.openSearchResult(result)}
+                        title="${result.path}"
                       >
-                        ${this.renderFileIcon(file.name)}
+                        ${this.renderFileIcon(result.name)}
                         <div class="file-info">
-                          <span class="file-name">${file.name}</span>
+                          <span class="file-name">${result.name}</span>
                           <div class="file-meta">
-                            <span>${this.formatFileSize(file.size)}</span>
-                            <span>${this.formatRelativeTime(file.updatedAtMs)}</span>
+                            <span class="search-result-path">${result.path}</span>
                           </div>
+                          ${
+                            result.matches.length > 0
+                              ? html`
+                            <div class="search-match-preview">
+                              ${result.matches.slice(0, 2).map(
+                                (m) => html`
+                                <div class="search-match-line">
+                                  <span class="search-line-num">L${m.line}</span>
+                                  <span class="search-snippet">${m.snippet}</span>
+                                </div>
+                              `,
+                              )}
+                            </div>
+                          `
+                              : ""
+                          }
                         </div>
                       </div>
                     `,
-                    )
+                        )
+                  }
+                `
+                : this.loading
+                  ? html`
+                      <div class="loading">Loading...</div>
+                    `
+                  : this.error
+                    ? html`<div class="error-state">${this.error}</div>`
+                    : html`
+                  ${
+                    this.currentPath
+                      ? html`
+                    <div 
+                      class="file-item folder-item"
+                      @click=${this.navigateToParent}
+                      title="Go back"
+                    >
+                      <span class="file-icon">${icons.chevronLeft}</span>
+                      <div class="file-info">
+                        <span class="file-name">..</span>
+                      </div>
+                    </div>
+                  `
+                      : ""
+                  }
+                  ${
+                    this.filteredAndSortedItems.length === 0
+                      ? html`<div class="empty-state">${this.searchQuery ? "No matching items" : "No items found"}</div>`
+                      : this.filteredAndSortedItems.map((item) =>
+                          item.isFolder
+                            ? html`
+                            <div 
+                              class="file-item folder-item"
+                              @click=${() => this.navigateToFolder(item.path)}
+                              @contextmenu=${(e: MouseEvent) => this.handleFolderContextMenu(e, item as WorkspaceFolder)}
+                              title="${item.name}"
+                            >
+                              <span class="folder-icon">📁</span>
+                              <div class="file-info">
+                                <span class="file-name">${item.name}</span>
+                                <div class="file-meta">
+                                  <span>${this.formatRelativeTime(item.updatedAtMs)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          `
+                            : html`
+                            <div
+                              class="file-item ${item.missing ? "missing" : ""} ${this.selectedFile?.path === item.path ? "selected" : ""}"
+                              @click=${() => this.selectFile(item as WorkspaceFile)}
+                              @contextmenu=${(e: MouseEvent) => this.handleFileContextMenu(e, item as WorkspaceFile)}
+                              title="${item.name}"
+                            >
+                              ${this.renderFileIcon(item.name)}
+                              <div class="file-info">
+                                <span class="file-name">${item.name}</span>
+                                <div class="file-meta">
+                                  <span>${this.formatFileSize(item.size)}</span>
+                                  <span>${this.formatRelativeTime(item.updatedAtMs)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          `,
+                        )
+                  }
+                `
           }
         </div>
       </div>
+
+      <!-- Content area -->
       <div class="content-area">
-        <button
-          class="mobile-menu-btn"
-          @click=${() => (this.sidebarCollapsed = !this.sidebarCollapsed)}
-          style="position: absolute; top: 12px; left: 12px; z-index: 5;"
-        >
-          ${this.renderMenuIcon()}
-        </button>
-        ${
-          this.selectedFile
-            ? html`
-              <div class="content-header">
+        <!-- Content header with breadcrumbs and actions -->
+        <div class="content-header">
+          <!-- Breadcrumbs -->
+          <div class="content-breadcrumbs">
+            📁
+            ${getPathBreadcrumbs(this.currentPath).map(
+              (crumb, index, arr) => html`
+              <span 
+                class="breadcrumb ${index === arr.length - 1 ? "active" : ""}"
+                @click=${index < arr.length - 1 ? () => this.navigateToFolder(crumb.path) : undefined}
+              >
+                ${crumb.name}
+              </span>
+              ${
+                index < arr.length - 1
+                  ? html`
+                      <span class="breadcrumb-separator">></span>
+                    `
+                  : ""
+              }
+            `,
+            )}
+            ${
+              this.selectedFile
+                ? html`
+              <span class="breadcrumb-separator">></span>
+              <span class="breadcrumb active">${this.selectedFile.name}</span>
+            `
+                : ""
+            }
+          </div>
+
+          <!-- Action buttons -->
+          <div class="content-actions">
+            ${
+              this.saveSuccess
+                ? html`
+                    <span class="save-feedback save-success">✓ Saved!</span>
+                  `
+                : ""
+            }
+            ${this.saveError ? html`<span class="save-feedback save-error">${this.saveError}</span>` : ""}
+            
+            ${
+              this.isEditing
+                ? html`
+              <!-- Edit mode actions -->
+              <button class="btn" @click=${this.cancelEdit}>Cancel</button>
+              <button
+                class="btn btn-primary"
+                @click=${this.saveFile}
+                ?disabled=${this.isSaving || !this.isDirty}
+              >
+                ${this.isSaving ? "Saving..." : "Save"}
+              </button>
+            `
+                : html`
+              <!-- View mode actions -->
+              <div class="dropdown">
+                <button class="btn" @click=${this.toggleNewDropdown}>
+                  + New ▾
+                </button>
                 ${
-                  this.isRenaming
+                  this.showNewDropdown
                     ? html`
-                    <div class="rename-form">
-                      ${this.renderFileIcon(this.selectedFile.name)}
-                      <input
-                        type="text"
-                        .value=${this.newFileName}
-                        @input=${(e: Event) => (this.newFileName = (e.target as HTMLInputElement).value)}
-                        @keydown=${(e: KeyboardEvent) => {
-                          if (e.key === "Enter") this.renameFile();
-                          if (e.key === "Escape") this.cancelRename();
-                        }}
-                      />
-                      <button class="btn" @click=${this.cancelRename}>Cancel</button>
-                      <button class="btn btn-primary" @click=${this.renameFile}>Save</button>
+                  <div class="dropdown-content">
+                    <div class="dropdown-item" @click=${() => {
+                      this.isCreating = true;
+                      this.closeDropdowns();
+                    }}>
+                      📄 New File
                     </div>
-                  `
-                    : html`
-                    <div class="content-title">
-                      ${this.renderFileIcon(this.selectedFile.name)}
-                      ${this.selectedFile.name}
-                      ${
-                        this.isDirty
-                          ? html`
-                              <span class="dirty-indicator">●</span>
-                            `
-                          : ""
-                      }
+                    <div class="dropdown-item" @click=${() => {
+                      this.isCreatingFolder = true;
+                      this.closeDropdowns();
+                    }}>
+                      📁 New Folder
                     </div>
-                  `
+                  </div>
+                `
+                    : ""
                 }
-                <div class="content-actions">
+              </div>
+
+              <button class="btn" @click=${this.triggerUpload}>
+                ↑ Upload
+              </button>
+
+              ${
+                this.selectedFile
+                  ? html`
+                <div class="dropdown">
+                  <button class="btn" @click=${this.toggleMoreDropdown}>
+                    ⋮ More
+                  </button>
                   ${
-                    this.saveSuccess
+                    this.showMoreDropdown
                       ? html`
-                          <span class="save-feedback save-success">✓ Saved!</span>
-                        `
+                    <div class="dropdown-content right-aligned">
+                      <div class="dropdown-item" @click=${() => {
+                        this.startRename();
+                        this.closeDropdowns();
+                      }}>
+                        ✏️ Rename
+                      </div>
+                      <div class="dropdown-item danger" @click=${() => {
+                        this.deleteFile();
+                        this.closeDropdowns();
+                      }}>
+                        🗑️ Delete
+                      </div>
+                    </div>
+                  `
                       : ""
                   }
-                  ${this.saveError ? html`<span class="save-feedback save-error">${this.saveError}</span>` : ""}
-                  ${
-                    this.isEditing
-                      ? html`
-                        <button class="btn" @click=${this.cancelEdit}>Cancel</button>
-                        <button
-                          class="btn btn-primary"
-                          @click=${this.saveFile}
-                          ?disabled=${this.isSaving || !this.isDirty}
-                        >
-                          ${this.isSaving ? "Saving..." : "Save"}
-                        </button>
-                      `
-                      : html`
-                        <button class="btn btn-icon" @click=${this.startRename} title="Rename">
-                          ${this.renderEditIcon()}
-                        </button>
-                        <button
-                          class="btn btn-icon"
-                          @click=${this.deleteFile}
-                          title="Delete"
-                          ?disabled=${this.isDeleting}
-                        >
-                          ${this.renderTrashIcon()}
-                        </button>
-                        <button class="btn" @click=${this.toggleEdit}>Edit</button>
-                      `
-                  }
                 </div>
-              </div>
-              <div class="content-body">
+                
                 ${
-                  this.loadingContent
+                  !this.isEditing
                     ? html`
-                        <div class="content-spinner">
-                          <div class="spinner"></div>
-                        </div>
-                      `
-                    : this.isEditing
-                      ? html`
-                        <textarea
-                          class="edit-textarea"
-                          .value=${this.editedContent}
-                          @input=${this.handleContentChange}
-                          @keydown=${this.handleTextareaKeydown}
-                        ></textarea>
-                      `
-                      : this.renderContent()
+                  <button class="btn btn-primary" @click=${this.toggleEdit}>
+                    Edit
+                  </button>
+                `
+                    : ""
                 }
-              </div>
+              `
+                  : ""
+              }
             `
-            : html`
-              <div class="empty-state">
-                ${this.renderFolderIcon()}
-                <span>Select a file to view</span>
-              </div>
-            `
-        }
+            }
+          </div>
+        </div>
+
+        <!-- Content body -->
+        <div class="content-body">
+          ${this.renderContentBody()}
+        </div>
+
+        <!-- Hidden file input for uploads -->
+        <input
+          type="file"
+          multiple
+          style="display:none"
+          @change=${this.handleFileUpload}
+          id="file-upload-input"
+        />
       </div>
+
+      <!-- Context menu -->
+      ${
+        this.contextMenu
+          ? html`
+        <div 
+          class="context-menu" 
+          style="left: ${this.contextMenu.x}px; top: ${this.contextMenu.y}px;"
+        >
+          ${this.contextMenu.items.map(
+            (item) => html`
+            <div 
+              class="context-menu-item ${item.danger ? "danger" : ""}"
+              @click=${() => {
+                item.action();
+                this.closeContextMenu();
+              }}
+            >
+              ${item.icon || ""} ${item.label}
+            </div>
+          `,
+          )}
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Mobile menu button -->
+      <button
+        class="mobile-menu-btn"
+        @click=${() => (this.sidebarCollapsed = !this.sidebarCollapsed)}
+        style="position: absolute; top: 12px; left: 12px; z-index: 5;"
+      >
+        ${this.renderMenuIcon()}
+      </button>
     `;
+  }
+
+  private renderContentBody() {
+    // Show inline creation forms
+    if (this.isCreating) {
+      return html`
+        <div class="inline-form">
+          <h3>Create New File</h3>
+          <input
+            type="text"
+            class="inline-form-input"
+            placeholder="filename.md"
+            .value=${this.newFileName}
+            @input=${(e: Event) => (this.newFileName = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") this.createFile();
+              if (e.key === "Escape") this.cancelCreate();
+            }}
+          />
+          <div class="inline-form-actions">
+            <button class="btn-cancel" @click=${this.cancelCreate}>Cancel</button>
+            <button class="btn-create" @click=${this.createFile}>Create File</button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (this.isCreatingFolder) {
+      return html`
+        <div class="inline-form">
+          <h3>Create New Folder</h3>
+          <input
+            type="text"
+            class="inline-form-input"
+            placeholder="folder-name"
+            .value=${this.newFolderName}
+            @input=${(e: Event) => (this.newFolderName = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") this.createFolder();
+              if (e.key === "Escape") this.cancelCreateFolder();
+            }}
+          />
+          <div class="inline-form-actions">
+            <button class="btn-cancel" @click=${this.cancelCreateFolder}>Cancel</button>
+            <button class="btn-create" @click=${this.createFolder}>Create Folder</button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (this.isRenaming && this.selectedFile) {
+      return html`
+        <div class="inline-form">
+          <h3>Rename File</h3>
+          <input
+            type="text"
+            class="inline-form-input"
+            .value=${this.newFileName}
+            @input=${(e: Event) => (this.newFileName = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") this.renameFile();
+              if (e.key === "Escape") this.cancelRename();
+            }}
+          />
+          <div class="inline-form-actions">
+            <button class="btn-cancel" @click=${this.cancelRename}>Cancel</button>
+            <button class="btn-create" @click=${this.renameFile}>Rename</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Show file content or empty state
+    if (!this.selectedFile) {
+      return html`
+        <div class="empty-state">
+          ${this.renderFolderIcon()}
+          <span>Select a file to view</span>
+        </div>
+      `;
+    }
+
+    // Show loading, editor, or content
+    if (this.loadingContent) {
+      return html`
+        <div class="content-spinner">
+          <div class="spinner"></div>
+        </div>
+      `;
+    }
+
+    if (this.isEditing) {
+      return html`
+        <textarea
+          class="edit-textarea"
+          .value=${this.editedContent}
+          @input=${this.handleContentChange}
+          @keydown=${this.handleTextareaKeydown}
+        ></textarea>
+      `;
+    }
+
+    return this.renderContent();
   }
 }
 

@@ -1,15 +1,22 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
-import Sortable from "sortablejs";
 import type { GatewayBrowserClient } from "../../gateway.js";
+import { ocTheme, ocBaseFormStyles } from "../shared/theme.js";
 import {
   loadTasks,
   saveTasks,
+  loadKanbanData,
+  saveKanbanData,
   createTask,
   moveTask,
   deleteTask,
   updateTask,
+  createProject,
+  createTag,
+  processTagsInDescription,
+  filterTasks,
+  getProjectStats,
   COLUMNS,
   PRIORITY_COLORS,
   getTasksByStatus,
@@ -18,6 +25,10 @@ import {
   type Task,
   type TaskStatus,
   type TaskPriority,
+  type TasksData,
+  type Project,
+  type Tag,
+  type TaskFilter,
 } from "./controller.js";
 
 @customElement("kanban-view")
@@ -26,59 +37,143 @@ export class KanbanView extends LitElement {
   gateway: GatewayBrowserClient | null = null;
 
   @state() private tasks: Task[] = [];
+  @state() private projects: Project[] = [];
+  @state() private tags: Tag[] = [];
   @state() private loading = true;
   @state() private saving = false;
   @state() private editingTaskId: string | null = null;
-  @state() private expandedTaskId: string | null = null;
+  // expandedTaskId removed — description always visible
   @state() private newTaskTitle = "";
   @state() private addingToColumn: TaskStatus | null = null;
   @state() private toastMessage: string | null = null;
   @state() private toastType: "error" | "success" = "error";
   @state() private deleteConfirmId: string | null = null;
   @state() private focusedTaskId: string | null = null;
+  @state() private draggingTaskId: string | null = null;
+  @state() private dragOverColumn: TaskStatus | null = null;
+  @state() private dragCardHeight: number = 0;
+  @state() private filter: TaskFilter = {};
+  @state() private showingNewProjectForm = false;
+  @state() private newProjectName = "";
 
-  private sortableInstances: Sortable[] = [];
   private editCancelled = false;
 
-  static styles = css`
+  static styles = [
+    ocTheme,
+    ocBaseFormStyles,
+    css`
     :host {
       display: block;
       height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      padding: 20px;
+      background: var(--background);
+      color: var(--foreground);
+      padding: 1.25rem;
       overflow: auto;
-      font-family: var(--font-body);
+      font-family: var(--oc-font-sans);
     }
 
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 24px;
+      margin-bottom: 1.5rem;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 0.75rem;
     }
 
     .title {
-      font-size: 20px;
-      font-weight: 600;
+      font-size: var(--oc-text-xl);
+      font-weight: var(--oc-weight-semibold);
       display: flex;
       align-items: center;
-      gap: 10px;
-      color: var(--text-strong);
+      gap: 0.625rem;
+      color: var(--foreground);
     }
 
     .title svg {
-      width: 24px;
-      height: 24px;
-      color: var(--muted);
+      width: 1.5rem;
+      height: 1.5rem;
+      color: var(--muted-foreground);
     }
 
     .title-count {
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--muted);
+      font-size: var(--oc-text-sm);
+      font-weight: var(--oc-weight-normal);
+      color: var(--muted-foreground);
+    }
+
+    /* Filter Bar Styles */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      font-size: var(--oc-text-sm);
+      font-weight: var(--oc-weight-medium);
+      color: var(--foreground);
+    }
+
+    .active-filters {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.125rem 0.5rem;
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: var(--oc-weight-medium);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: background-color var(--oc-duration-fast) var(--oc-ease);
+    }
+
+    .filter-pill:hover {
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+
+    .filter-pill-close {
+      width: 0.875rem;
+      height: 0.875rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.2);
+      color: inherit;
+    }
+
+    .clear-filters {
+      color: var(--muted-foreground);
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .clear-filters:hover {
+      color: var(--foreground);
     }
 
     .saving-indicator {
@@ -166,7 +261,7 @@ export class KanbanView extends LitElement {
     .task-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       min-height: 60px;
     }
 
@@ -180,52 +275,67 @@ export class KanbanView extends LitElement {
 
     .task-card {
       background: var(--card);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       padding: 0;
-      transition: all var(--duration-fast) var(--ease-out);
+      transition:
+        border-color var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out);
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
       outline: none;
     }
 
-    .task-card:hover {
-      border-color: var(--border-strong);
-      box-shadow: var(--shadow-md);
+    .task-card {
+      cursor: grab;
     }
 
-    .task-card:focus {
+    .task-card:active {
+      cursor: grabbing;
+    }
+
+    .task-card:hover {
+      border-color: var(--border-strong);
+    }
+
+    .task-card:focus-visible {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px var(--accent-subtle);
     }
 
-    .task-card.sortable-ghost {
-      opacity: 0.4;
-      background: var(--accent-subtle);
+    .task-card.dragging {
+      opacity: 0.3;
     }
 
-    .task-card.sortable-chosen {
-      box-shadow: var(--shadow-lg);
-      border-color: var(--accent);
+    .drag-placeholder {
+      border: 2px dashed var(--accent);
+      border-radius: var(--radius-lg);
+      background: var(--accent-subtle);
+      transition: height var(--duration-fast) var(--ease-out);
     }
 
     .task-main {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      padding: 12px;
+      gap: 6px;
+      padding: 14px 14px 0 10px;
     }
 
     .drag-handle {
       cursor: grab;
       color: var(--muted);
-      opacity: 0.4;
-      padding: 2px;
+      opacity: 0;
+      padding: 4px 2px;
       flex-shrink: 0;
       transition: opacity var(--duration-fast);
+      margin-top: -1px;
     }
 
     .task-card:hover .drag-handle {
-      opacity: 0.8;
+      opacity: 0.5;
+    }
+
+    .drag-handle:hover {
+      opacity: 0.8 !important;
     }
 
     .drag-handle:active {
@@ -233,13 +343,17 @@ export class KanbanView extends LitElement {
     }
 
     .drag-handle svg {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
     }
 
     .task-content {
       flex: 1;
       min-width: 0;
+    }
+
+    .task-content-header {
+      width: 100%;
     }
 
     .task-header {
@@ -248,42 +362,49 @@ export class KanbanView extends LitElement {
       gap: 8px;
     }
 
-    .priority-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
+    .task-title {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.45;
+      word-break: break-word;
+      color: var(--text-strong);
+      flex: 1;
     }
 
-    .task-title {
-      font-size: 14px;
-      line-height: 1.4;
-      word-break: break-word;
-      color: var(--text);
-      flex: 1;
+    .task-edit-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .task-title-input {
       width: 100%;
       box-sizing: border-box;
-      background: var(--bg);
-      border: 1px solid var(--accent);
-      border-radius: var(--radius-sm);
-      padding: 6px 8px;
+      background: var(--card);
+      border: 1px solid var(--ring);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
       color: var(--text);
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 500;
       font-family: inherit;
       outline: none;
+      box-shadow: var(--focus-ring);
     }
 
-    .task-meta {
+    .task-edit-actions {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-      font-size: 11px;
-      color: var(--muted);
+      gap: 6px;
+      justify-content: flex-end;
     }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    /* task-meta removed — time shown in task-footer */
 
     .task-actions {
       display: flex;
@@ -325,73 +446,197 @@ export class KanbanView extends LitElement {
       height: 14px;
     }
 
-    .task-expanded {
-      padding: 0 12px 12px 34px;
-      border-top: 1px solid var(--border);
-      margin-top: 0;
+    .task-body {
+      padding: 8px 14px 14px 28px;
     }
 
     .task-description {
-      margin-top: 8px;
-    }
-
-    .task-description-input {
       width: 100%;
       box-sizing: border-box;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 8px;
+      padding: 6px 8px;
       color: var(--text);
-      font-size: 13px;
+      font-size: 12px;
       font-family: inherit;
+      line-height: 1.5;
       outline: none;
-      resize: vertical;
-      min-height: 60px;
+      resize: none;
+      overflow: hidden;
+      min-height: 42px;
+      cursor: text;
+      transition:
+        border-color var(--duration-fast) var(--ease-out),
+        background var(--duration-fast) var(--ease-out),
+        color var(--duration-fast) var(--ease-out);
     }
 
-    .task-description-input:focus {
+    .task-description:hover {
+      border-color: var(--border-strong);
+    }
+
+    .task-description:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-subtle);
+    }
+
+    .task-description::placeholder {
+      color: var(--muted);
+    }
+
+    /* Project and Tag Styles */
+    .task-project {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .project-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .project-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 4px 24px 4px 8px;
+      color: var(--text);
+      font-size: 11px;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      max-width: 140px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      transition: border-color var(--duration-fast) var(--ease-out);
+    }
+
+    .project-select:hover {
+      border-color: var(--border-strong);
+    }
+
+    .project-select:focus {
       border-color: var(--accent);
     }
 
-    .task-description-text {
-      font-size: 13px;
-      color: var(--muted);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .task-description-empty {
-      font-size: 13px;
-      color: var(--muted);
-      font-style: italic;
-      cursor: pointer;
-    }
-
-    .task-description-empty:hover {
-      color: var(--text);
-    }
-
-    .priority-select {
-      margin-top: 8px;
+    .task-tags {
       display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .tag-pill {
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      line-height: 1.2;
     }
 
-    .priority-select label {
-      font-size: 12px;
-      color: var(--muted);
+    .tag-pill:hover {
+      filter: brightness(1.1);
     }
 
-    .priority-select select {
+    .new-project-form {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .new-project-input {
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 4px 8px;
+      padding: 4px 6px;
       color: var(--text);
-      font-size: 12px;
+      font-size: 11px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .new-project-input:focus {
+      border-color: var(--accent);
+    }
+
+    .new-project-actions {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .btn-xs {
+      padding: 3px 8px;
+      font-size: 10px;
+    }
+
+    .task-footer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .task-footer-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .task-time {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .priority-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
       cursor: pointer;
+      border: 1px solid transparent;
+      background: none;
+      text-transform: capitalize;
+      transition: all var(--duration-fast) var(--ease-out);
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+    }
+
+    .priority-badge:hover {
+      filter: brightness(1.15);
+    }
+
+    .priority-badge.none {
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 8px;
+      border: 1px dashed var(--border);
+    }
+
+    .priority-badge.none:hover {
+      border-color: var(--border-strong);
+      color: var(--text);
     }
 
     .add-task-btn {
@@ -450,40 +695,61 @@ export class KanbanView extends LitElement {
     }
 
     .btn {
-      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      transition: all var(--duration-fast) var(--ease-out);
-      background: var(--card);
+      letter-spacing: -0.01em;
+      transition:
+        border-color var(--duration-fast) var(--ease-out),
+        background var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out),
+        transform var(--duration-fast) var(--ease-out);
+      background: var(--bg-elevated);
       color: var(--text);
     }
 
     .btn:hover {
       background: var(--bg-hover);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: none;
     }
 
     .btn-primary {
       background: var(--accent);
-      color: var(--accent-foreground);
+      color: var(--primary-foreground);
       border-color: var(--accent);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     .btn-primary:hover {
       background: var(--accent-hover);
       border-color: var(--accent-hover);
+      box-shadow: var(--shadow-md), 0 0 20px var(--accent-glow);
     }
 
     .btn-danger {
-      background: var(--danger, #ef4444);
-      color: white;
-      border-color: var(--danger, #ef4444);
+      background: var(--danger-subtle);
+      color: var(--danger);
+      border-color: transparent;
     }
 
     .btn-danger:hover {
-      opacity: 0.9;
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
     }
 
     .loading {
@@ -508,12 +774,12 @@ export class KanbanView extends LitElement {
     }
 
     .toast.error {
-      background: var(--danger, #ef4444);
+      background: var(--danger);
       color: white;
     }
 
     .toast.success {
-      background: var(--success, #22c55e);
+      background: var(--ok);
       color: white;
     }
 
@@ -616,19 +882,14 @@ export class KanbanView extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.destroySortable();
     this.removeEventListener("keydown", this.handleGlobalKeydown);
-  }
-
-  updated(changedProps: Map<string, unknown>) {
-    super.updated(changedProps);
-    if (!this.loading && (changedProps.has("loading") || changedProps.has("tasks"))) {
-      setTimeout(() => this.initSortable(), 0);
-    }
   }
 
   private handleGlobalKeydown = (e: KeyboardEvent) => {
     if (this.deleteConfirmId || this.editingTaskId || this.addingToColumn) return;
+    // Don't capture keys when typing in a textarea/input
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
 
     const allTasks = this.getAllTaskElements();
     if (allTasks.length === 0) return;
@@ -651,7 +912,7 @@ export class KanbanView extends LitElement {
       case "Enter":
         if (this.focusedTaskId) {
           e.preventDefault();
-          this.toggleExpanded(this.focusedTaskId);
+          this.startEditTask(this.focusedTaskId);
         }
         break;
       case "Delete":
@@ -689,17 +950,31 @@ export class KanbanView extends LitElement {
     }
 
     this.loading = true;
-    this.tasks = await loadTasks(this.gateway);
+    try {
+      const data = await loadKanbanData(this.gateway);
+      this.tasks = data.tasks;
+      this.projects = data.projects;
+      this.tags = data.tags;
+    } catch (err) {
+      console.error("Failed to load data:", err);
+      this.showToast("Failed to load data", "error");
+    }
     this.loading = false;
   }
 
   private async saveData() {
     if (!this.gateway) return;
     this.saving = true;
-    const success = await saveTasks(this.gateway, this.tasks);
+    const data: TasksData = {
+      tasks: this.tasks,
+      projects: this.projects,
+      tags: this.tags,
+      lastUpdated: Date.now(),
+    };
+    const success = await saveKanbanData(this.gateway, data);
     this.saving = false;
     if (!success) {
-      this.showToast("Failed to save tasks", "error");
+      this.showToast("Failed to save data", "error");
     }
   }
 
@@ -711,64 +986,92 @@ export class KanbanView extends LitElement {
     }, 3000);
   }
 
-  private destroySortable() {
-    this.sortableInstances.forEach((s) => s.destroy());
-    this.sortableInstances = [];
-  }
+  // --- Native HTML5 Drag and Drop ---
 
-  private initSortable() {
-    this.destroySortable();
-
-    const columns = this.shadowRoot?.querySelectorAll(".task-list");
-    columns?.forEach((col) => {
-      const sortable = Sortable.create(col as HTMLElement, {
-        group: "kanban-tasks",
-        animation: 150,
-        handle: ".drag-handle",
-        ghostClass: "sortable-ghost",
-        chosenClass: "sortable-chosen",
-        dragClass: "sortable-drag",
-        onEnd: (evt) => this.handleDragEnd(evt),
-      });
-      this.sortableInstances.push(sortable);
+  private handleDragStart(e: DragEvent, taskId: string) {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", taskId);
+    // Capture card height for placeholder
+    const card = (e.target as HTMLElement).closest(".task-card") as HTMLElement;
+    if (card) this.dragCardHeight = card.offsetHeight;
+    // Delay so the dragging class applies after the drag image is captured
+    requestAnimationFrame(() => {
+      this.draggingTaskId = taskId;
     });
   }
 
-  private handleDragEnd(evt: Sortable.SortableEvent) {
-    const taskId = evt.item.dataset.taskId;
-    const toEl = evt.to as HTMLElement;
-    const newStatus = toEl.dataset.status as TaskStatus;
-    const newIndex = evt.newIndex ?? 0;
+  private handleDragEndCleanup() {
+    this.draggingTaskId = null;
+    this.dragOverColumn = null;
+  }
 
+  private handleColumnDragOver(e: DragEvent, status: TaskStatus) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    this.dragOverColumn = status;
+  }
+
+  private handleColumnDragLeave(e: DragEvent, status: TaskStatus) {
+    // Only clear if actually leaving the column (not entering a child)
+    const related = e.relatedTarget as HTMLElement | null;
+    const taskList = (e.currentTarget as HTMLElement);
+    if (!related || !taskList.contains(related)) {
+      if (this.dragOverColumn === status) {
+        this.dragOverColumn = null;
+      }
+    }
+  }
+
+  private handleColumnDrop(e: DragEvent, newStatus: TaskStatus) {
+    e.preventDefault();
+    this.dragOverColumn = null;
+
+    const taskId = e.dataTransfer?.getData("text/plain");
     if (!taskId) return;
 
     const taskIndex = this.tasks.findIndex((t) => t.id === taskId);
     if (taskIndex === -1) return;
 
     const task = this.tasks[taskIndex];
+
+    // Determine insertion index based on drop Y position
+    const dropY = e.clientY;
+    const taskList = (e.currentTarget as HTMLElement);
+    const cards = Array.from(taskList.querySelectorAll(".task-card")) as HTMLElement[];
+    let insertIndex = cards.length; // Default: append at end
+
+    for (let i = 0; i < cards.length; i++) {
+      // Skip the card being dragged
+      if (cards[i].dataset.taskId === taskId) continue;
+      const rect = cards[i].getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (dropY < midY) {
+        // Count how many non-dragged cards are before this one
+        insertIndex = cards.slice(0, i).filter((c) => c.dataset.taskId !== taskId).length;
+        break;
+      }
+    }
+
     const targetColumnTasks = getTasksByStatus(this.tasks, newStatus).filter(
       (t) => t.id !== taskId,
     );
-    const newOrder = calculateOrder(targetColumnTasks, newIndex);
+    const newOrder = calculateOrder(targetColumnTasks, insertIndex);
 
-    // Check if anything changed
     const statusChanged = task.status !== newStatus;
-    const orderChanged = evt.oldIndex !== newIndex;
+    const orderChanged = task.order !== newOrder;
 
     if (statusChanged || orderChanged) {
-      // Destroy Sortable BEFORE state update to prevent conflicts
-      this.destroySortable();
-
       const updatedTasks = [...this.tasks];
       updatedTasks[taskIndex] = moveTask(task, newStatus, newOrder);
       this.tasks = updatedTasks;
       this.saveData();
     }
+
+    this.draggingTaskId = null;
   }
 
-  private toggleExpanded(taskId: string) {
-    this.expandedTaskId = this.expandedTaskId === taskId ? null : taskId;
-  }
+  // toggleExpanded removed — description always visible
 
   private startAddTask(status: TaskStatus) {
     this.addingToColumn = status;
@@ -807,7 +1110,6 @@ export class KanbanView extends LitElement {
 
   private startEditTask(taskId: string) {
     this.editingTaskId = taskId;
-    this.expandedTaskId = null;
     requestAnimationFrame(() => {
       const input = this.shadowRoot?.querySelector(
         `.task-card[data-task-id="${taskId}"] .task-title-input`,
@@ -855,9 +1157,21 @@ export class KanbanView extends LitElement {
   private updateDescription(taskId: string, description: string) {
     const taskIndex = this.tasks.findIndex((t) => t.id === taskId);
     if (taskIndex !== -1) {
+      // Process tags in description and auto-create new ones
+      const { newTags } = processTagsInDescription(description, this.tags);
+      if (newTags.length > 0) {
+        this.tags = [...this.tags, ...newTags];
+      }
+      
+      // Extract tag names from description for task.tags
+      const tagRegex = /#(\w+)/g;
+      const tagMatches = Array.from(description.matchAll(tagRegex));
+      const taskTags = tagMatches.map(match => match[1]);
+      
       const updatedTasks = [...this.tasks];
       updatedTasks[taskIndex] = updateTask(updatedTasks[taskIndex], {
         description: description.trim() || undefined,
+        tags: taskTags.length > 0 ? taskTags : undefined,
       });
       this.tasks = updatedTasks;
       this.saveData();
@@ -891,6 +1205,66 @@ export class KanbanView extends LitElement {
     this.showToast("Task deleted", "success");
     this.deleteConfirmId = null;
     this.focusedTaskId = null;
+  }
+
+  // Project management methods
+  private updateTaskProject(taskId: string, projectId: string | "") {
+    const taskIndex = this.tasks.findIndex((t) => t.id === taskId);
+    if (taskIndex !== -1) {
+      const updatedTasks = [...this.tasks];
+      updatedTasks[taskIndex] = updateTask(updatedTasks[taskIndex], {
+        project: projectId || undefined,
+      });
+      this.tasks = updatedTasks;
+      this.saveData();
+    }
+  }
+
+  private addNewProject(taskId?: string) {
+    if (!this.newProjectName.trim()) return;
+    const project = createProject(this.newProjectName.trim(), this.projects);
+    this.projects = [...this.projects, project];
+    
+    // If taskId is provided, assign the new project to that task
+    if (taskId) {
+      this.updateTaskProject(taskId, project.id);
+    }
+    
+    this.saveData();
+    this.showToast(`Project "${project.name}" created`, "success");
+    this.newProjectName = "";
+    this.showingNewProjectForm = false;
+  }
+
+  private cancelNewProject() {
+    this.showingNewProjectForm = false;
+    this.newProjectName = "";
+  }
+
+  // Filter management methods
+  private updateFilter(updates: Partial<TaskFilter>) {
+    this.filter = { ...this.filter, ...updates };
+  }
+
+  private clearFilter() {
+    this.filter = {};
+  }
+
+  private removeFilterTag(tag: string) {
+    const currentTags = this.filter.tags || [];
+    const newTags = currentTags.filter(t => t !== tag);
+    this.updateFilter({ tags: newTags.length > 0 ? newTags : undefined });
+  }
+
+  private addFilterTag(tag: string) {
+    const currentTags = this.filter.tags || [];
+    if (!currentTags.includes(tag)) {
+      this.updateFilter({ tags: [...currentTags, tag] });
+    }
+  }
+
+  private getFilteredTasks(): Task[] {
+    return filterTasks(this.tasks, this.filter);
   }
 
   private renderGripIcon() {
@@ -934,26 +1308,143 @@ export class KanbanView extends LitElement {
     `;
   }
 
-  private renderExpandIcon() {
+  // renderCommentIcon removed — description always visible
+
+  private cyclePriority(task: Task) {
+    const cycle: Array<TaskPriority | ""> = ["", "low", "medium", "high"];
+    const current = cycle.indexOf(task.priority || "");
+    const next = cycle[(current + 1) % cycle.length];
+    this.updatePriority(task.id, next);
+  }
+
+  private renderPriorityBadge(task: Task) {
+    const p = task.priority;
+    if (!p) {
+      return html`<button class="priority-badge none" title="Set priority" @click=${(e: Event) => { e.stopPropagation(); this.cyclePriority(task); }}>—</button>`;
+    }
+    const color = PRIORITY_COLORS[p];
+    return html`<button class="priority-badge" style="background: ${color}20; color: ${color}; border-color: ${color}40;" title="Priority: ${p} (click to change)" @click=${(e: Event) => { e.stopPropagation(); this.cyclePriority(task); }}>${p}</button>`;
+  }
+
+  private renderTaskProject(task: Task) {
+    const currentProject = task.project ? this.projects.find(p => p.id === task.project) : null;
+    
     return html`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
+      <div class="task-project" @click=${(e: Event) => e.stopPropagation()}>
+        ${currentProject 
+          ? html`
+            <div style="display: flex; align-items: center; gap: 4px; cursor: pointer;" 
+                 @click=${() => {
+                   // Allow clicking on the project name to change it
+                   const select = this.shadowRoot?.querySelector(`#project-select-${task.id}`) as HTMLSelectElement;
+                   if (select) select.style.display = "inline-block";
+                 }}>
+              <div class="project-dot" style="background: ${currentProject.color}"></div>
+              <span>${currentProject.name}</span>
+            </div>
+          `
+          : nothing
+        }
+        <select 
+          id="project-select-${task.id}"
+          class="project-select" 
+          style="${currentProject ? "display: none;" : ""}"
+          .value=${task.project || ""}
+          @change=${(e: Event) => {
+            const select = e.target as HTMLSelectElement;
+            if (select.value === "__new__") {
+              this.showingNewProjectForm = true;
+            } else {
+              this.updateTaskProject(task.id, select.value);
+              if (select.value && currentProject) {
+                select.style.display = "none";
+              }
+            }
+          }}
+          @blur=${(e: Event) => {
+            const select = e.target as HTMLSelectElement;
+            if (currentProject && !this.showingNewProjectForm) {
+              select.style.display = "none";
+            }
+          }}
+        >
+          <option value="">No project</option>
+          ${this.projects.map(project => html`
+            <option value="${project.id}" ?selected=${task.project === project.id}>
+              ${project.name}
+            </option>
+          `)}
+          <option value="__new__">+ New project</option>
+        </select>
+        ${this.showingNewProjectForm ? html`
+          <div class="new-project-form">
+            <input
+              type="text"
+              class="new-project-input"
+              placeholder="Project name..."
+              .value=${this.newProjectName}
+              @input=${(e: Event) => this.newProjectName = (e.target as HTMLInputElement).value}
+              @keydown=${(e: KeyboardEvent) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  this.addNewProject(task.id);
+                } else if (e.key === "Escape") {
+                  this.cancelNewProject();
+                }
+              }}
+            />
+            <div class="new-project-actions">
+              <button class="btn btn-xs" @click=${this.cancelNewProject}>Cancel</button>
+              <button class="btn btn-primary btn-xs" @click=${() => this.addNewProject(task.id)}>Add</button>
+            </div>
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+
+  private renderTaskTags(task: Task) {
+    if (!task.tags || task.tags.length === 0) {
+      return nothing;
+    }
+
+    return html`
+      <div class="task-tags">
+        ${task.tags.map(tagName => {
+          const tag = this.tags.find(t => t.name === tagName);
+          const color = tag?.color || "#6b7280";
+          return html`
+            <span 
+              class="tag-pill" 
+              style="background: ${color}" 
+              title="Filter by #${tagName}"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this.addFilterTag(tagName);
+              }}
+            >
+              #${tagName}
+            </span>
+          `;
+        })}
+      </div>
     `;
   }
 
   private renderTask(task: Task) {
     const isEditing = this.editingTaskId === task.id;
-    const isExpanded = this.expandedTaskId === task.id;
-    const priorityColor = task.priority ? PRIORITY_COLORS[task.priority] : null;
+    const isDragging = this.draggingTaskId === task.id;
 
     return html`
       <div
-        class="task-card"
+        class="task-card ${isDragging ? "dragging" : ""}"
         data-task-id=${task.id}
         tabindex="0"
+        draggable=${isEditing ? "false" : "true"}
+        @dragstart=${(e: DragEvent) => { if (isEditing) { e.preventDefault(); return; } this.handleDragStart(e, task.id); }}
+        @dragend=${() => this.handleDragEndCleanup()}
         @focus=${() => (this.focusedTaskId = task.id)}
-        @dblclick=${() => this.toggleExpanded(task.id)}
       >
         <div class="task-main">
           <div class="drag-handle">${this.renderGripIcon()}</div>
@@ -961,32 +1452,32 @@ export class KanbanView extends LitElement {
             ${
               isEditing
                 ? html`
-                  <input
-                    type="text"
-                    class="task-title-input"
-                    .value=${task.title}
-                    @keydown=${(e: KeyboardEvent) => this.handleEditKeydown(e, task.id)}
-                    @blur=${(e: FocusEvent) => this.handleEditBlur(e, task.id)}
-                  />
+                  <div class="task-edit-form" @click=${(e: Event) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      class="task-title-input"
+                      draggable="false"
+                      .value=${task.title}
+                      @dragstart=${(e: DragEvent) => { e.preventDefault(); e.stopPropagation(); }}
+                      @mousedown=${(e: MouseEvent) => e.stopPropagation()}
+                      @keydown=${(e: KeyboardEvent) => {
+                        e.stopPropagation();
+                        this.handleEditKeydown(e, task.id);
+                      }}
+                    />
+                    <div class="task-edit-actions">
+                      <button class="btn btn-sm" @click=${() => { this.editingTaskId = null; }}>Cancel</button>
+                      <button class="btn btn-primary btn-sm" @click=${() => {
+                        const input = this.shadowRoot?.querySelector(`.task-card[data-task-id="${task.id}"] .task-title-input`) as HTMLInputElement;
+                        if (input) this.handleEditBlur({ target: input } as unknown as FocusEvent, task.id);
+                      }}>Save</button>
+                    </div>
+                  </div>
                 `
                 : html`
-                  <div class="task-header">
-                    ${
-                      priorityColor
-                        ? html`<div class="priority-dot" style="background: ${priorityColor}"></div>`
-                        : nothing
-                    }
+                  <div class="task-content-header">
                     <div class="task-title">${task.title}</div>
-                  </div>
-                  <div class="task-meta">
-                    <span>${formatTimeAgo(task.createdAt)}</span>
-                    ${
-                      task.description
-                        ? html`
-                            <span>· Has notes</span>
-                          `
-                        : nothing
-                    }
+                    ${this.renderTaskTags(task)}
                   </div>
                 `
             }
@@ -997,17 +1488,7 @@ export class KanbanView extends LitElement {
                 <div class="task-actions">
                   <button
                     class="task-action-btn"
-                    title="Expand"
-                    @click=${(e: Event) => {
-                      e.stopPropagation();
-                      this.toggleExpanded(task.id);
-                    }}
-                  >
-                    ${this.renderExpandIcon()}
-                  </button>
-                  <button
-                    class="task-action-btn"
-                    title="Edit (e)"
+                    title="Edit title (e)"
                     @click=${(e: Event) => {
                       e.stopPropagation();
                       this.startEditTask(task.id);
@@ -1030,45 +1511,35 @@ export class KanbanView extends LitElement {
               : nothing
           }
         </div>
-        ${
-          isExpanded
-            ? html`
-              <div class="task-expanded">
-                <div class="task-description">
-                  <textarea
-                    class="task-description-input"
-                    placeholder="Add description..."
-                    .value=${task.description || ""}
-                    @blur=${(e: FocusEvent) =>
-                      this.updateDescription(task.id, (e.target as HTMLTextAreaElement).value)}
-                  ></textarea>
-                </div>
-                <div class="priority-select">
-                  <label>Priority:</label>
-                  <select
-                    .value=${task.priority || ""}
-                    @change=${(e: Event) =>
-                      this.updatePriority(
-                        task.id,
-                        (e.target as HTMLSelectElement).value as TaskPriority | "",
-                      )}
-                  >
-                    <option value="">None</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-              </div>
-            `
-            : nothing
-        }
+        <div class="task-body" @click=${(e: Event) => e.stopPropagation()}>
+          <textarea
+            class="task-description"
+            placeholder="Add description..."
+            draggable="false"
+            .value=${task.description || ""}
+            @blur=${(e: FocusEvent) =>
+              this.updateDescription(task.id, (e.target as HTMLTextAreaElement).value)}
+            @keydown=${(e: KeyboardEvent) => e.stopPropagation()}
+            @dragstart=${(e: DragEvent) => { e.preventDefault(); e.stopPropagation(); }}
+            @mousedown=${(e: MouseEvent) => e.stopPropagation()}
+            rows="2"
+            @input=${(e: Event) => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+            @focus=${(e: Event) => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+          ></textarea>
+          <div class="task-footer">
+            <div class="task-footer-row">
+              ${this.renderPriorityBadge(task)}
+              ${this.renderTaskProject(task)}
+            </div>
+            <span class="task-time">${formatTimeAgo(task.createdAt)}</span>
+          </div>
+        </div>
       </div>
     `;
   }
 
   private renderColumn(column: (typeof COLUMNS)[0]) {
-    const columnTasks = getTasksByStatus(this.tasks, column.id);
+    const allTasks = getTasksByStatus(this.getFilteredTasks(), column.id);
 
     return html`
       <div class="column" data-status=${column.id}>
@@ -1077,22 +1548,31 @@ export class KanbanView extends LitElement {
             <div class="column-dot" style="background: ${column.color}"></div>
             ${column.title}
           </div>
-          <div class="column-count">${columnTasks.length}</div>
+          <div class="column-count">${allTasks.length}</div>
         </div>
         <div class="column-body">
           ${
-            columnTasks.length === 0
+            allTasks.length === 0
               ? html`
                   <div class="empty-message">No tasks</div>
                 `
               : nothing
           }
-          <div class="task-list" data-status=${column.id}>
+          <div
+            class="task-list"
+            data-status=${column.id}
+            @dragover=${(e: DragEvent) => this.handleColumnDragOver(e, column.id)}
+            @dragleave=${(e: DragEvent) => this.handleColumnDragLeave(e, column.id)}
+            @drop=${(e: DragEvent) => this.handleColumnDrop(e, column.id)}
+          >
             ${repeat(
-              columnTasks,
+              allTasks,
               (task) => task.id,
               (task) => this.renderTask(task),
             )}
+            ${this.dragOverColumn === column.id && this.draggingTaskId
+              ? html`<div class="drag-placeholder" style="height: ${this.dragCardHeight}px"></div>`
+              : nothing}
           </div>
           ${
             this.addingToColumn === column.id
@@ -1117,6 +1597,81 @@ export class KanbanView extends LitElement {
               `
           }
         </div>
+      </div>
+    `;
+  }
+
+  private renderFilterBar() {
+    const hasActiveFilters = !!(this.filter.project || this.filter.tags?.length || this.filter.priority);
+    
+    return html`
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span class="filter-label">Project:</span>
+          <select 
+            class="filter-select" 
+            .value=${this.filter.project || "all"}
+            @change=${(e: Event) => {
+              const value = (e.target as HTMLSelectElement).value;
+              this.updateFilter({ project: value === "all" ? undefined : value });
+            }}
+          >
+            <option value="all">All Projects</option>
+            ${this.projects.map(project => html`
+              <option value="${project.id}" ?selected=${this.filter.project === project.id}>
+                ${project.name}
+              </option>
+            `)}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Priority:</span>
+          <select 
+            class="filter-select" 
+            .value=${this.filter.priority || "all"}
+            @change=${(e: Event) => {
+              const value = (e.target as HTMLSelectElement).value;
+              this.updateFilter({ priority: value === "all" ? undefined : (value as TaskPriority) });
+            }}
+          >
+            <option value="all">All Priorities</option>
+            <option value="high" ?selected=${this.filter.priority === "high"}>High</option>
+            <option value="medium" ?selected=${this.filter.priority === "medium"}>Medium</option>
+            <option value="low" ?selected=${this.filter.priority === "low"}>Low</option>
+          </select>
+        </div>
+
+        ${hasActiveFilters ? html`
+          <div class="active-filters">
+            ${this.filter.project ? (() => {
+              const project = this.projects.find(p => p.id === this.filter.project);
+              return project ? html`
+                <div class="filter-pill" @click=${() => this.updateFilter({ project: undefined })}>
+                  <div class="project-dot" style="background: ${project.color}"></div>
+                  ${project.name}
+                  <div class="filter-pill-close">×</div>
+                </div>
+              ` : nothing;
+            })() : nothing}
+            
+            ${this.filter.priority ? html`
+              <div class="filter-pill" @click=${() => this.updateFilter({ priority: undefined })}>
+                ${this.filter.priority} priority
+                <div class="filter-pill-close">×</div>
+              </div>
+            ` : nothing}
+            
+            ${(this.filter.tags || []).map(tag => html`
+              <div class="filter-pill" @click=${() => this.removeFilterTag(tag)}>
+                #${tag}
+                <div class="filter-pill-close">×</div>
+              </div>
+            `)}
+            
+            <span class="clear-filters" @click=${this.clearFilter}>Clear all</span>
+          </div>
+        ` : nothing}
       </div>
     `;
   }
@@ -1156,7 +1711,7 @@ export class KanbanView extends LitElement {
       <div class="header">
         <div class="title">
           ${this.renderKanbanIcon()} Tasks
-          <span class="title-count">(${this.tasks.length})</span>
+          <span class="title-count">(${this.getFilteredTasks().length}${this.getFilteredTasks().length !== this.tasks.length ? ` of ${this.tasks.length}` : ""})</span>
         </div>
         ${
           this.saving
@@ -1169,6 +1724,7 @@ export class KanbanView extends LitElement {
             : nothing
         }
       </div>
+      ${this.renderFilterBar()}
       <div class="board">${COLUMNS.map((col) => this.renderColumn(col))}</div>
       ${this.toastMessage ? html`<div class="toast ${this.toastType}">${this.toastMessage}</div>` : nothing}
       ${this.renderDeleteModal()}

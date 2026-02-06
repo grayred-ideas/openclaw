@@ -13,11 +13,10 @@
     "dompurify": "^3.3.1",
     "lit": "^3.3.2",
     "marked": "^17.0.1",
-    "sortablejs": "^1.15.6",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/sortablejs": "^1.15.9",
     "@vitest/browser-playwright": "4.0.18",
     "playwright": "^1.58.1",
     "vitest": "4.0.18"

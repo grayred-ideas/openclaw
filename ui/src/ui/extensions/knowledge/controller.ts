@@ -48,12 +48,13 @@ const DATA_FILE = "knowledge/knowledge-index.json";
  */
 export async function loadKnowledgeData(gateway: GatewayBrowserClient): Promise<KnowledgeData> {
   try {
-    const result = await gateway.call("agents.files.read", {
+    const result = await gateway.request("agents.files.read", {
       agentId: "main",
-      name: DATA_FILE,
+      path: DATA_FILE,
     });
-    if (result && typeof result === "object" && "content" in result) {
-      return JSON.parse(result.content as string);
+    const res = result as { file?: { content?: string; missing?: boolean } } | null;
+    if (res?.file && !res.file.missing && res.file.content) {
+      return JSON.parse(res.file.content);
     }
   } catch (e) {
     console.warn("Knowledge data not found, using defaults:", e);
@@ -68,9 +69,9 @@ export async function saveKnowledgeData(
   gateway: GatewayBrowserClient,
   data: KnowledgeData,
 ): Promise<void> {
-  await gateway.call("agents.files.write", {
+  await gateway.request("agents.files.write", {
     agentId: "main",
-    name: DATA_FILE,
+    path: DATA_FILE,
     content: JSON.stringify(data, null, 2),
   });
 }
