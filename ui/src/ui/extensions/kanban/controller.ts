@@ -17,21 +17,15 @@ export type TasksData = {
   lastUpdated: number;
 };
 
-const TASKS_FILE = "tasks.json";
+const STORAGE_KEY = "openclaw-kanban-tasks";
 
-export async function loadTasks(gateway: GatewayBrowserClient): Promise<Task[]> {
+// Using localStorage for now (backend tasks.json support requires gateway rebuild)
+export async function loadTasks(_gateway: GatewayBrowserClient): Promise<Task[]> {
   try {
-    const result = await gateway.call("agents.files.get", {
-      agentId: "main",
-      name: TASKS_FILE,
-    });
-
-    if (result.ok && result.payload) {
-      const file = (result.payload as { file: { content?: string } }).file;
-      if (file.content) {
-        const data: TasksData = JSON.parse(file.content);
-        return data.tasks || [];
-      }
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const data: TasksData = JSON.parse(stored);
+      return data.tasks || [];
     }
     return [];
   } catch (err) {
@@ -40,20 +34,14 @@ export async function loadTasks(gateway: GatewayBrowserClient): Promise<Task[]> 
   }
 }
 
-export async function saveTasks(gateway: GatewayBrowserClient, tasks: Task[]): Promise<boolean> {
+export async function saveTasks(_gateway: GatewayBrowserClient, tasks: Task[]): Promise<boolean> {
   try {
     const data: TasksData = {
       tasks,
       lastUpdated: Date.now(),
     };
-
-    const result = await gateway.call("agents.files.set", {
-      agentId: "main",
-      name: TASKS_FILE,
-      content: JSON.stringify(data, null, 2),
-    });
-
-    return result.ok === true;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
   } catch (err) {
     console.error("Failed to save tasks:", err);
     return false;

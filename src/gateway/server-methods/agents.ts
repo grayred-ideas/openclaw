@@ -38,7 +38,13 @@ const BOOTSTRAP_FILE_NAMES = [
 
 const MEMORY_FILE_NAMES = [DEFAULT_MEMORY_FILENAME, DEFAULT_MEMORY_ALT_FILENAME] as const;
 
-const ALLOWED_FILE_NAMES = new Set<string>([...BOOTSTRAP_FILE_NAMES, ...MEMORY_FILE_NAMES]);
+const CUSTOM_FILE_NAMES = ["tasks.json"] as const;
+
+const ALLOWED_FILE_NAMES = new Set<string>([
+  ...BOOTSTRAP_FILE_NAMES,
+  ...MEMORY_FILE_NAMES,
+  ...CUSTOM_FILE_NAMES,
+]);
 
 type FileMeta = {
   size: number;
