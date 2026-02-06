@@ -2,7 +2,7 @@ import type { IconName } from "./icons.js";
 
 export const TAB_GROUPS = [
   { label: "Chat", tabs: ["chat"] },
-  { label: "Workspace", tabs: ["files", "kanban"] },
+  { label: "Workspace", tabs: ["files", "kanban", "finance", "knowledge"] },
   {
     label: "Control",
     tabs: ["overview", "channels", "instances", "sessions", "cron"],
@@ -25,7 +25,9 @@ export type Tab =
   | "debug"
   | "logs"
   | "files"
-  | "kanban";
+  | "kanban"
+  | "finance"
+  | "knowledge";
 
 const TAB_PATHS: Record<Tab, string> = {
   agents: "/agents",
@@ -42,6 +44,8 @@ const TAB_PATHS: Record<Tab, string> = {
   logs: "/logs",
   files: "/files",
   kanban: "/kanban",
+  finance: "/finance",
+  knowledge: "/knowledge",
 };
 
 const PATH_TO_TAB = new Map(Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab]));
@@ -155,6 +159,10 @@ export function iconForTab(tab: Tab): IconName {
       return "folder";
     case "kanban":
       return "fileText";
+    case "finance":
+      return "dollarSign";
+    case "knowledge":
+      return "book";
     default:
       return "folder";
   }
@@ -190,6 +198,10 @@ export function titleForTab(tab: Tab) {
       return "Files";
     case "kanban":
       return "Tasks";
+    case "finance":
+      return "Finance";
+    case "knowledge":
+      return "Knowledge";
     default:
       return "Control";
   }
@@ -225,6 +237,10 @@ export function subtitleForTab(tab: Tab) {
       return "Browse and edit workspace files.";
     case "kanban":
       return "Manage tasks with drag-and-drop boards.";
+    case "finance":
+      return "Track invoices, expenses, and financial documents.";
+    case "knowledge":
+      return "Personal knowledge base with notes, inbox, and references.";
     default:
       return "";
   }

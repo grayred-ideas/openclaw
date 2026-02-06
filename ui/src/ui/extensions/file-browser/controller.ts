@@ -26,9 +26,9 @@ export async function listWorkspaceFiles(
   agentId = "main",
 ): Promise<FileListResult | null> {
   try {
-    const result = await gateway.call("agents.files.list", { agentId });
-    if (result.ok && result.payload) {
-      return result.payload as FileListResult;
+    const result = await gateway.request("agents.files.list", { agentId });
+    if (result) {
+      return result as FileListResult;
     }
     return null;
   } catch (err) {
@@ -43,9 +43,9 @@ export async function getWorkspaceFile(
   agentId = "main",
 ): Promise<FileGetResult | null> {
   try {
-    const result = await gateway.call("agents.files.get", { agentId, name: fileName });
-    if (result.ok && result.payload) {
-      return result.payload as FileGetResult;
+    const result = await gateway.request("agents.files.get", { agentId, name: fileName });
+    if (result) {
+      return result as FileGetResult;
     }
     return null;
   } catch (err) {
@@ -61,10 +61,39 @@ export async function saveWorkspaceFile(
   agentId = "main",
 ): Promise<boolean> {
   try {
-    const result = await gateway.call("agents.files.set", { agentId, name: fileName, content });
-    return result.ok === true;
+    await gateway.request("agents.files.set", { agentId, name: fileName, content });
+    return true;
   } catch (err) {
     console.error("Failed to save workspace file:", err);
+    return false;
+  }
+}
+
+export async function deleteWorkspaceFile(
+  gateway: GatewayBrowserClient,
+  fileName: string,
+  agentId = "main",
+): Promise<boolean> {
+  try {
+    await gateway.request("agents.files.delete", { agentId, name: fileName });
+    return true;
+  } catch (err) {
+    console.error("Failed to delete workspace file:", err);
+    return false;
+  }
+}
+
+export async function renameWorkspaceFile(
+  gateway: GatewayBrowserClient,
+  oldName: string,
+  newName: string,
+  agentId = "main",
+): Promise<boolean> {
+  try {
+    await gateway.request("agents.files.rename", { agentId, name: oldName, newName });
+    return true;
+  } catch (err) {
+    console.error("Failed to rename workspace file:", err);
     return false;
   }
 }

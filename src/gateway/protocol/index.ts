@@ -28,6 +28,14 @@ import {
   AgentsListParamsSchema,
   type AgentsListResult,
   AgentsListResultSchema,
+  // New folder and extended file APIs
+  AgentsFoldersListParamsSchema,
+  AgentsFoldersCreateParamsSchema,
+  AgentsFoldersDeleteParamsSchema,
+  AgentsFilesUploadParamsSchema,
+  AgentsFilesReadParamsSchema,
+  AgentsFilesWriteParamsSchema,
+  AgentsFilesDeleteParamsSchema,
   type AgentWaitParams,
   AgentWaitParamsSchema,
   type ChannelsLogoutParams,
@@ -233,6 +241,14 @@ export const validateAgentsFilesGetParams = ajv.compile<AgentsFilesGetParams>(
 export const validateAgentsFilesSetParams = ajv.compile<AgentsFilesSetParams>(
   AgentsFilesSetParamsSchema,
 );
+// New folder and extended file API validators
+export const validateAgentsFoldersListParams = ajv.compile(AgentsFoldersListParamsSchema);
+export const validateAgentsFoldersCreateParams = ajv.compile(AgentsFoldersCreateParamsSchema);
+export const validateAgentsFoldersDeleteParams = ajv.compile(AgentsFoldersDeleteParamsSchema);
+export const validateAgentsFilesUploadParams = ajv.compile(AgentsFilesUploadParamsSchema);
+export const validateAgentsFilesReadParams = ajv.compile(AgentsFilesReadParamsSchema);
+export const validateAgentsFilesWriteParams = ajv.compile(AgentsFilesWriteParamsSchema);
+export const validateAgentsFilesDeleteParams = ajv.compile(AgentsFilesDeleteParamsSchema);
 export const validateNodePairRequestParams = ajv.compile<NodePairRequestParams>(
   NodePairRequestParamsSchema,
 );

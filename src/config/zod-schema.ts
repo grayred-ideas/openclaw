@@ -590,6 +590,23 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    // Gmail accounts for IMAP/SMTP access
+    gmail: z
+      .object({
+        accounts: z
+          .record(
+            z.string(),
+            z
+              .object({
+                email: z.string(),
+                appPassword: z.string(),
+              })
+              .strict(),
+          )
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {

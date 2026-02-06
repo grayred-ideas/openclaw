@@ -70,6 +70,8 @@ import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
 import "./extensions/file-browser/view.js";
 import "./extensions/kanban/view.js";
+import "./extensions/finance/view.js";
+import "./extensions/knowledge/view.js";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -1092,6 +1094,18 @@ export function renderApp(state: AppViewState) {
         ${
           state.tab === "kanban"
             ? html`<kanban-view .gateway=${state.client}></kanban-view>`
+            : nothing
+        }
+
+        ${
+          state.tab === "finance"
+            ? html`<finance-view .gateway=${state.client}></finance-view>`
+            : nothing
+        }
+
+        ${
+          state.tab === "knowledge"
+            ? html`<knowledge-view .gateway=${state.client}></knowledge-view>`
             : nothing
         }
       </main>
