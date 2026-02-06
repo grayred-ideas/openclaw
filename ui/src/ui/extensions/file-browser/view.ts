@@ -991,6 +991,44 @@ export class FileBrowserView extends LitElement {
     }
   }
 
+  private triggerUpload() {
+    const input = this.shadowRoot?.querySelector("#file-upload-input") as HTMLInputElement;
+    if (input) input.click();
+  }
+
+  private async handleFileUpload(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || !this.gateway) return;
+
+    for (const file of Array.from(files)) {
+      try {
+        const text = await file.text();
+        const success = await saveWorkspaceFile(this.gateway, file.name, text);
+        if (success) {
+          this.showToast(`Uploaded: ${file.name}`, "success");
+        } else {
+          this.showToast(`Failed to upload: ${file.name}`, "error");
+        }
+      } catch {
+        this.showToast(`Failed to read: ${file.name}`, "error");
+      }
+    }
+
+    input.value = "";
+    await this.loadFiles();
+  }
+
+  private showToast(message: string, type: "success" | "error" = "success") {
+    this.saveSuccess = type === "success";
+    this.saveError = type === "error" ? message : null;
+    if (type === "success") {
+      setTimeout(() => {
+        this.saveSuccess = false;
+      }, 2000);
+    }
+  }
+
   private async deleteFile() {
     if (!this.gateway || !this.selectedFile) return;
 
@@ -1330,9 +1368,19 @@ export class FileBrowserView extends LitElement {
           <button class="toolbar-btn" @click=${() => (this.isCreating = true)} title="New file">
             ${this.renderPlusIcon()} New
           </button>
+          <button class="toolbar-btn" @click=${this.triggerUpload} title="Upload file">
+            ⬆ Upload
+          </button>
           <button class="toolbar-btn" @click=${() => this.loadFiles()} title="Refresh">
             ${this.renderRefreshIcon()}
           </button>
+          <input
+            type="file"
+            multiple
+            style="display:none"
+            @change=${this.handleFileUpload}
+            id="file-upload-input"
+          />
         </div>
 
         <div class="search-bar">
