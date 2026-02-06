@@ -107,7 +107,7 @@ export class KanbanView extends LitElement {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 1rem;
+        padding: 12px 16px;
         background: var(--card);
         border-radius: var(--radius-lg);
         border: 1px solid var(--border);
@@ -122,9 +122,39 @@ export class KanbanView extends LitElement {
       }
 
       .filter-label {
-        font-size: var(--oc-text-sm);
-        font-weight: var(--oc-weight-medium);
+        font-size: 13px;
+        font-weight: 500;
         color: var(--foreground);
+      }
+
+      .filter-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 6px 28px 6px 10px;
+        color: var(--foreground);
+        font-size: 13px;
+        font-family: var(--oc-font-sans);
+        outline: none;
+        cursor: pointer;
+        height: 34px;
+        min-width: 130px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 14px;
+        transition: border-color var(--oc-duration-fast) var(--oc-ease);
+      }
+
+      .filter-select:hover {
+        border-color: var(--oc-gray-300);
+      }
+
+      .filter-select:focus {
+        border-color: var(--ring);
+        box-shadow: var(--focus-ring);
       }
 
       .active-filters {
@@ -502,16 +532,19 @@ export class KanbanView extends LitElement {
         background: var(--background);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+        padding: 6px 28px 6px 10px;
         color: var(--foreground);
-        font-size: 0.6875rem;
+        font-size: 12px;
         font-family: var(--oc-font-sans);
         outline: none;
         cursor: pointer;
-        max-width: 8.75rem;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        min-width: 120px;
+        max-width: 200px;
+        height: 32px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 0.375rem center;
+        background-position: right 8px center;
+        background-size: 14px;
         transition: border-color var(--oc-duration-fast) var(--oc-ease);
       }
 
